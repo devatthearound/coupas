@@ -1,0 +1,107 @@
+
+> coupas@0.0.1 dist
+> run-s build electron:dist
+
+
+> coupas@0.0.1 build
+> run-s next:build electron:build
+
+
+> coupas@0.0.1 next:build
+> next build
+
+   ▲ Next.js 15.1.4
+   - Environments: .env.local, .env.production, .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/24) ...
+   Generating static pages (6/24) 
+   Generating static pages (12/24) 
+   Generating static pages (18/24) 
+ ✓ Generating static pages (24/24)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    930 B           106 kB
+├ ○ /_not-found                          982 B           106 kB
+├ ƒ /api/auth/check                      165 B           105 kB
+├ ƒ /api/coupang/keys                    165 B           105 kB
+├ ƒ /api/coupang/keys/check              165 B           105 kB
+├ ƒ /api/create-video                    165 B           105 kB
+├ ƒ /api/deeplink                        165 B           105 kB
+├ ƒ /api/download-image                  165 B           105 kB
+├ ƒ /api/generate                        165 B           105 kB
+├ ƒ /api/google-auth                     165 B           105 kB
+├ ƒ /api/google-auth/token               165 B           105 kB
+├ ƒ /api/healthy                         165 B           105 kB
+├ ƒ /api/products/search                 165 B           105 kB
+├ ƒ /api/tickets/validate                165 B           105 kB
+├ ○ /google-auth                         685 B           106 kB
+├ ○ /google-auth/callback                922 B           106 kB
+├ ○ /gpt                                 621 B           106 kB
+├ ○ /products                            68.5 kB         184 kB
+├ ○ /search                              2.54 kB         118 kB
+├ ○ /video-creation                      5.03 kB         115 kB
+└ ○ /youtube                             1.43 kB         107 kB
++ First Load JS shared by all            105 kB
+  ├ chunks/4bd1b696-469b12185327efa3.js  53 kB
+  ├ chunks/517-025af90fbffd4a9b.js       50.4 kB
+  └ other shared chunks (total)          1.9 kB
+
+
+ƒ Middleware                             37.8 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> coupas@0.0.1 electron:build
+> tsup
+
+CLI Building entry: electron/main/index.ts, electron/main/preload.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.4.0
+CLI Using tsup config: /Users/iga-eun/Documents/electron-next/tsup.config.ts
+CLI Target: es2017
+CLI Cleaning output folder
+CJS Build start
+CJS build/preload.js 2.54 KB
+CJS build/index.js   41.44 KB
+CJS ⚡️ Build success in 40ms
+
+> coupas@0.0.1 electron:dist
+> electron-builder --dir
+
+  • electron-builder  version=24.13.3 os=24.1.0
+  • loaded configuration  file=package.json ("build" field)
+  • packaging       platform=darwin arch=arm64 electron=31.7.7 appOutDir=releases/mac-arm64
+  • default Electron icon is used  reason=application icon is not set
+  • signing         file=releases/mac-arm64/coupas.app platform=darwin type=distribution identity=E4DABC6010CF06B113DBC8684BBB953F29FDCB39 provisioningProfile=none
+  ⨯ Command failed: codesign --sign E4DABC6010CF06B113DBC8684BBB953F29FDCB39 --force --timestamp --options runtime --entitlements entitlements.mac.plist /Users/iga-eun/Documents/electron-next/releases/mac-arm64/coupas.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Resources/ml.lproj/locale.pak
+/Users/iga-eun/Documents/electron-next/releases/mac-arm64/coupas.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Resources/ml.lproj/locale.pak: No such file or directory
+  failedTask=build stackTrace=Error: Command failed: codesign --sign E4DABC6010CF06B113DBC8684BBB953F29FDCB39 --force --timestamp --options runtime --entitlements entitlements.mac.plist /Users/iga-eun/Documents/electron-next/releases/mac-arm64/coupas.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Resources/ml.lproj/locale.pak
+/Users/iga-eun/Documents/electron-next/releases/mac-arm64/coupas.app/Contents/Frameworks/Electron Framework.framework/Versions/Current/Resources/ml.lproj/locale.pak: No such file or directory
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at ChildProcess.exithandler (node:child_process:414:12)
+    at ChildProcess.emit (node:events:507:28)
+    at maybeClose (node:internal/child_process:1101:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:305:5)
+From previous event:
+    at processImmediate (node:internal/timers:511:21)
+From previous event:
+    at readDirectoryAndSign (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/macPackager.ts:478:29)
+    at MacPackager.signApp (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/macPackager.ts:488:11)
+    at MacPackager.doSignAfterPack (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/platformPackager.ts:336:21)
+    at MacPackager.doPack (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/platformPackager.ts:321:7)
+    at MacPackager.pack (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/macPackager.ts:198:9)
+    at Packager.doBuild (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/packager.ts:445:9)
+    at executeFinally (/Users/iga-eun/Documents/electron-next/node_modules/builder-util/src/promise.ts:12:14)
+    at Packager._build (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/packager.ts:379:31)
+    at Packager.build (/Users/iga-eun/Documents/electron-next/node_modules/app-builder-lib/src/packager.ts:340:12)
+    at executeFinally (/Users/iga-eun/Documents/electron-next/node_modules/builder-util/src/promise.ts:12:14)
+ERROR: "electron:dist" exited with 1.
