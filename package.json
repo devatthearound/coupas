@@ -17,7 +17,7 @@
     "next:lint": "next lint",
     "format": "dprint fmt",
     "postinstall": "electron-builder install-app-deps",
-    "electron:dist": "electron-builder -mw",
+    "electron:dist": "electron-builder -w",
     "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
@@ -78,10 +78,10 @@
     "typescript": "^5.5.4"
   },
   "build": {
-    "asar": true,
+    "appId": "com.growsome.coupas",
     "productName": "coupas",
     "executableName": "coupas",
-    "appId": "com.growsome.coupas",
+    "asar": true,
     "copyright": "Copyright © 2025 Your Company",
     "asarUnpack": [
       "node_modules/next",
@@ -122,12 +122,18 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        "nsis"
       ],
       "artifactName": "coupas-${version}-${arch}.${ext}",
       "publisherName": "디어라운드 (The Around)",
       "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "afterSign": "scripts/notarize.js",
     "mac": {
