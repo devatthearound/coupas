@@ -265,7 +265,8 @@ ipcMain.handle('combine-videos-and-images', async (
   outroVideo,
   backgroundMusic,
   backgroundTemplatePath,
-  productInfo
+  productInfo,
+  logoPath
 ) => {
   try {
     console.log('비디오 합성 요청 받음:', {
@@ -274,7 +275,8 @@ ipcMain.handle('combine-videos-and-images', async (
       outroVideo,
       backgroundMusic,
       backgroundTemplatePath,
-      productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array'
+      productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array',
+      logoPath
     });
     
     // 파일 존재 여부 확인
@@ -304,7 +306,8 @@ ipcMain.handle('combine-videos-and-images', async (
       outroVideo,
       backgroundMusic,
       backgroundTemplatePath,
-      productInfo
+      productInfo,
+      logoPath
     )
     return result;
   } catch (error) {
