@@ -15,13 +15,17 @@ declare global {
         backgroundMusic: string,
         backgroundTemplatePath: string,
         productInfo: {
-          productName: string;
-          productPrice: string;
-          productImage: string;
-          isRocket: boolean;
-          isCoupon: boolean;
-          shortUrl: string;
-        }[]
+          productName: string;      // 상품명
+          productPrice: number;     // 가격
+          rating?: number;          // 평점 (별점) - 선택적
+          ratingCount?: number;     // 평점 갯수 - 선택적
+          features?: string;        // 특징 - 선택적
+          isRocket: boolean;        // 로켓배송 여부
+          isFreeShipping: boolean;  // 무료배송 여부
+          shortUrl: string;        // 상품 링크
+          rank: number;            // 순위
+        }[],
+        logoPath: string
       ) => Promise<{ success: boolean; error?: string, outputPath: string }>;
       uploadVideo: (auth: any, title: string, description: string, tags: string[], videoFilePath: string, thumbFilePath: string) => Promise<{ success: boolean; error?: string }>;
       getAuthUrl: () => Promise<string>;

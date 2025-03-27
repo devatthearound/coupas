@@ -547,7 +547,11 @@ function ProductsContent() {
               {/* 영상 내보내기 버튼 */}
               <div className="relative group">
                 <button
-                  onClick={() => router.push('/video-creation')}
+                  onClick={() => {
+                    // 선택된 상품 정보를 JSON 문자열로 변환하여 URL 파라미터로 전달
+                    const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
+                    router.push(`/video-creation?products=${productsParam}`);
+                  }}
                   className="px-6 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-2
                     bg-gradient-to-r from-purple-500 to-indigo-500 opacity-80
                     text-white/90 hover:opacity-100 hover:shadow-lg"
