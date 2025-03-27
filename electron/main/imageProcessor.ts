@@ -227,12 +227,15 @@ export class ImageProcessor {
   static async createMultipleProductImages(
     videoTitle: string,
     productsList : {
-      productName: string;
-      productPrice: string;
-      productImage: string;
-      isRocket: boolean;
-      isCoupon: boolean;
-      shortUrl: string;
+      productName: string;      // 상품명
+      productPrice: number;     // 가격
+      rating?: number;          // 평점 (별점) - 선택적
+      ratingCount?: number;     // 평점 갯수 - 선택적
+      features?: string;        // 특징 - 선택적
+      isRocket: boolean;        // 로켓배송 여부
+      isFreeShipping: boolean;  // 무료배송 여부
+      shortUrl: string;        // 상품 링크
+      rank: number;            // 순위
     }[],
     backgroundTemplatePath: string,
     outputDir = path.join(process.cwd(), 'output_images')

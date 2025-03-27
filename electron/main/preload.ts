@@ -26,8 +26,9 @@ const electron = {
       outroVideo: string,
       backgroundMusic: string,
       backgroundTemplatePath: string,
-      productInfo: any[]
-    ) => ipcRenderer.invoke('combine-videos-and-images', videoTitle, introVideo, outroVideo, backgroundMusic, backgroundTemplatePath, productInfo),
+      productInfo: any[],
+      logoPath: string
+    ) => ipcRenderer.invoke('combine-videos-and-images', videoTitle, introVideo, outroVideo, backgroundMusic, backgroundTemplatePath, productInfo, logoPath),
   
     // 비디오 트리밍
     trimVideo: (inputPath: string, outputPath: string, startTime: number, duration: number) => 
