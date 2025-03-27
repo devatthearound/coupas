@@ -163,7 +163,8 @@
     "protocols": [
       {
         "name": "Coupas Auth",
-        "schemes": ["coupas-auth"]
+        "schemes": ["coupas-auth"],
+         "role": "Viewer"
       }
     ]
   }
