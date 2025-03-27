@@ -12,8 +12,7 @@ interface ApiResponse {
 
 // API 키 저장/수정
 export async function saveCoupangApiKeys(keys: CoupangApiKeys): Promise<ApiResponse> {
-  const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-  const response = await fetch(`${basePath}/api/coupang/keys`, {
+  const response = await fetch(`/api/coupang/keys`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,8 +28,7 @@ export async function saveCoupangApiKeys(keys: CoupangApiKeys): Promise<ApiRespo
 // API 키 조회
 export async function getCoupangApiKeys(): Promise<CoupangApiKeys | null> {
   try {
-    const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-    const response = await fetch(`${basePath}/api/coupang/keys`, {
+    const response = await fetch(`/api/coupang/keys`, {
       method: 'GET',
     });
 
@@ -47,8 +45,7 @@ export async function getCoupangApiKeys(): Promise<CoupangApiKeys | null> {
 
 // API 키 삭제
 export async function deleteCoupangApiKeys(): Promise<ApiResponse> {
-  const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-  const response = await fetch(`${basePath}/api/coupang/keys`, {
+  const response = await fetch(`/api/coupang/keys`, {
     method: 'DELETE',
   });
 
@@ -60,8 +57,7 @@ export async function deleteCoupangApiKeys(): Promise<ApiResponse> {
 // API 키 존재 여부 확인
 export async function checkCoupangApiKeys(): Promise<boolean> {
   try {
-    const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-    const response = await fetch(`${basePath}/api/coupang/keys/check`, {
+    const response = await fetch(`/api/coupang/keys/check`, {
       method: 'GET',
     });
 

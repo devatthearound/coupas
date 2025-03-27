@@ -18,7 +18,7 @@ const GoogleAuthCallbackPage = () => {
         }
         
         setStatus('인증 코드 교환 중...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_COUPAS_API_PATH}/api/google-auth`, {
+        const response = await fetch(`/api/google-auth`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
