@@ -157,71 +157,58 @@ const startNextJSServer = async () => {
 };
 
 app.whenReady().then(() => {
-  // windows/linux 프로토콜 등록Windows와 Linux에서 사용되는 프로토콜 핸들러
+  // 프로토콜 등록을 더 일찍 수행
+  if (!app.isDefaultProtocolClient('coupas-auth')) {
+    app.setAsDefaultProtocolClient('coupas-auth');
+  }
+
   protocol.handle('coupas-auth', async (request) => {
     try {
-      const [protocol, fullPath] = request.url.split('://');
-      console.log('URL:', request.url);
-      console.log('Protocol:', protocol);
-      console.log('Path:', fullPath);
-
-      // path와 query 분리
-      const [path] = fullPath.split('?');
+      const url = new URL(request.url);
+      console.log('프로토콜 요청 URL:', url.toString());
       
-      if (path === 'login') {
-        const tempUrl = new URL(`http://temp.com?${fullPath.split('?')[1]}`);
-        const accessToken = tempUrl.searchParams.get('coupas_access_token');
-        const refreshToken = tempUrl.searchParams.get('coupas_refresh_token');
+      if (url.pathname === '/login') {
+        const accessToken = url.searchParams.get('coupas_access_token');
+        const refreshToken = url.searchParams.get('coupas_refresh_token');
         
-        if (mainWindow) {
-          mainWindow.webContents.send('auth-callback', { accessToken, refreshToken });
+        console.log('토큰 수신:', { accessToken, refreshToken });
+        
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('auth-callback', { 
+            accessToken, 
+            refreshToken 
+          });
           mainWindow.focus();
-        }
-      } else if (path === 'google-auth/success') {
-        if (mainWindow) {
-          mainWindow.webContents.send('google-auth-success');
-          mainWindow.focus();
+          return new Response('인증 성공');
         }
       }
     } catch (error) {
       console.error('프로토콜 처리 중 오류:', error);
     }
-    
     return new Response('인증 처리 중...');
   });
 
-  // macOS 전용 URL 스킴 핸들러
+  // macOS를 위한 추가 처리
   app.on('open-url', (event, url) => {
     event.preventDefault();
     try {
-      const [protocol, fullPath] = url.split('://');
-      console.log('URL:', url);
-      console.log('Protocol:', protocol);
-      console.log('Path:', fullPath);
-
-      // path와 query 분리
-      const [path] = fullPath.split('?');
-      
-      if (path === 'login') {
-        const tempUrl = new URL(`http://temp.com?${fullPath.split('?')[1]}`);
-        const accessToken = tempUrl.searchParams.get('coupas_access_token');
-        const refreshToken = tempUrl.searchParams.get('coupas_refresh_token');
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol === 'coupas-auth:' && parsedUrl.pathname === '/login') {
+        const accessToken = parsedUrl.searchParams.get('coupas_access_token');
+        const refreshToken = parsedUrl.searchParams.get('coupas_refresh_token');
         
-        if (mainWindow) {
-          mainWindow.webContents.send('auth-callback', { accessToken, refreshToken });
-          mainWindow.focus();
-        }
-      }else if (path === 'google-auth/success') {
-        if (mainWindow) {
-          mainWindow.webContents.send('google-auth-success');
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('auth-callback', { 
+            accessToken, 
+            refreshToken 
+          });
           mainWindow.focus();
         }
       }
     } catch (error) {
-      console.error('URL 스킴 처리 중 오류:', error);
+      console.error('URL 처리 중 오류:', error);
     }
   });
-
 
   createWindow();
 
@@ -356,3 +343,34 @@ ipcMain.handle('read-file-as-data-url', async (_, filePath) => {
     throw error;
   }
 });
+
+// 싱글 인스턴스 보장
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      
+      // URL 프로토콜로 실행된 경우 처리
+      const protocolUrl = commandLine.find(arg => arg.startsWith('coupas-auth://'));
+      if (protocolUrl) {
+        try {
+          const url = new URL(protocolUrl);
+          const accessToken = url.searchParams.get('coupas_access_token');
+          const refreshToken = url.searchParams.get('coupas_refresh_token');
+          
+          mainWindow.webContents.send('auth-callback', { 
+            accessToken, 
+            refreshToken 
+          });
+        } catch (error) {
+          console.error('URL 파싱 중 오류:', error);
+        }
+      }
+    }
+  });
+}

@@ -35,7 +35,7 @@ const GoogleAuthPage = () => {
         if (hasValidToken) return;
 
         setStatus('인증 URL 요청 중...');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_COUPAS_API_PATH}/api/google-auth`);
+        const response = await fetch(`/api/google-auth`);
         
         if (!response.ok) {
           throw new Error('인증 URL을 가져오는데 실패했습니다');

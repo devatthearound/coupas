@@ -56,7 +56,7 @@ export default function Navbar({
 
       router.push(`/external-redirect?url=${encodeURIComponent(redirectUrl)}`);
     } else {
-      const redirectTo = encodeURIComponent(`${process.env.NEXT_PUBLIC_COUPAS_BASE_PATH}/${pathname}`);
+      const redirectTo = encodeURIComponent(`${pathname}`);
 
       const redirectUrl = `${process.env.NEXT_PUBLIC_GROWSOME_BASE_PATH}/login?redirect_to=${redirectTo}`;
 

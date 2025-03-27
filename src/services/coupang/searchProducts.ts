@@ -21,10 +21,8 @@ export async function searchProducts({
   accessKey,
   secretKey,
 }: SearchProductsParams): Promise<ProductData[]> {
-  const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-  
   const response = await fetch(
-    `${basePath}/api/products/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
+    `/api/products/search?keyword=${encodeURIComponent(keyword)}&limit=${limit}`,
     {
       headers: {
         'X-Coupang-Access-Key': accessKey,

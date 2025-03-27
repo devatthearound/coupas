@@ -125,8 +125,7 @@ function ProductsContent() {
 
         try {
           // 서버 API를 통해 이미지 다운로드
-          const basePath = process.env.NEXT_PUBLIC_COUPAS_BASE_PATH || '';
-          const response = await fetch(`${basePath}/api/download-image`, {
+          const response = await fetch(`/api/download-image`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
