@@ -10,8 +10,6 @@ export interface ProductData {
     productPrice: number;
     productUrl: string;
     shortUrl: string;
-    reviewCount: number;
-    starRating: number;
   }
 
   

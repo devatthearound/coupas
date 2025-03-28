@@ -25,15 +25,12 @@ export class ImageProcessor {
     const isDev = process.env.NODE_ENV === 'development';
     console.log('현재 환경:', isDev ? '개발' : '프로덕션');
 
-    // ESM용 __dirname 대체
-    const __filename = new URL(import.meta.url).pathname;
-    const __dirname = path.dirname(__filename);
-
+    // import.meta.url 대신 __dirname 사용
     const possiblePaths = [
       // 개발 환경 경로
       path.join(process.cwd(), 'electron', 'assets', 'background_layout_1.png'),
       // 빌드된 경로
-      path.join(__dirname, '..', '..', 'electron', 'assets', 'background_layout_1.png'),
+      path.join(__dirname, 'assets', 'background_layout_1.png'),
       // resources 폴더 경로
       path.join(process.resourcesPath || '', 'assets', 'background_layout_1.png')
     ];
@@ -53,20 +50,6 @@ export class ImageProcessor {
         console.log(`❌ 경로 접근 오류: ${p}`, error);
       }
       console.log(`❌ 파일 없음: ${p}`);
-    }
-
-    // 디버깅을 위한 디렉토리 내용 출력
-    try {
-      const electronAssetsDir = path.join(process.cwd(), 'electron', 'assets');
-      console.log('\n=== electron/assets 디렉토리 내용 ===');
-      if (fs.existsSync(electronAssetsDir)) {
-        const files = fs.readdirSync(electronAssetsDir);
-        console.log(files);
-      } else {
-        console.log('electron/assets 디렉토리가 존재하지 않습니다');
-      }
-    } catch (error) {
-      console.log('디렉토리 읽기 오류:', error);
     }
 
     throw new Error(
@@ -114,7 +97,6 @@ export class ImageProcessor {
     price: string,
     rank: number,
     isRocket: boolean,
-    isNextDayDelivery: boolean,
     discountRate?: number,
     rating?: number,
     ratingCount?: number,
@@ -166,8 +148,8 @@ export class ImageProcessor {
       const defaultPositions = {
         rank: { x: 0.34, y: 0.315, fontSize: 83, color: '#FFFFFF', weight: '900', letterSpacing: -0.3 },
         title: { startX: 0.04, endX: 0.32, y: 0.165, fontSize: 47, color: '#091E42', weight: '900', letterSpacing: -0.3 },
-        name: { x: 0.047, y: 0.5, fontSize: 83, color: '#091E42', weight: '900', letterSpacing: -0.3 },
-        price: { x: 0.047, y: 0.89, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
+        name: { x: 0.04, y: 0.5, fontSize: 83, color: '#091E42', weight: '900', letterSpacing: -0.3 },
+        price: { x: 0.04, y: 0.89, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
         rating: { x: 0.37, y: 0.89, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
         features: { x: 0.37,  y: 0.94, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
         isNextDayDelivery : { x: 0.79, y: 0.89, fontSize: 47, color: '#FF8B00', weight: '900', letterSpacing: -0.3 },
@@ -264,41 +246,6 @@ export class ImageProcessor {
         return starsHtml;
       };
 
-      const deliveryText = () => {
-        if(isNextDayDelivery && isRocket) {
-          return `<text 
-          x="${width * defaultPositions.isNextDayDelivery.x}" 
-          y="${height * defaultPositions.isNextDayDelivery.y}" 
-          fill="${defaultPositions.isNextDayDelivery.color}"
-          font-weight="${defaultPositions.isNextDayDelivery.weight}"
-          font-size="${defaultPositions.isNextDayDelivery.fontSize}"
-          style="letter-spacing: ${defaultPositions.isNextDayDelivery.letterSpacing}px">오늘사면 내일도착</text>
-          <text 
-          x="${width * defaultPositions.isRocket.x}" 
-          y="${height * defaultPositions.isRocket.y}" 
-          fill="${defaultPositions.isRocket.color}"
-          font-weight="${defaultPositions.isRocket.weight}"
-          font-size="${defaultPositions.isRocket.fontSize}"
-          style="letter-spacing: ${defaultPositions.isRocket.letterSpacing}px">로켓 배송</text>
-          `
-        } else if(isNextDayDelivery) {
-          return `<text 
-          x="${width * defaultPositions.isNextDayDelivery.x}" 
-          y="${height * defaultPositions.isNextDayDelivery.y}" 
-          fill="${defaultPositions.isNextDayDelivery.color}"
-          font-weight="${defaultPositions.isNextDayDelivery.weight}"
-          font-size="${defaultPositions.isNextDayDelivery.fontSize}"
-          style="letter-spacing: ${defaultPositions.isNextDayDelivery.letterSpacing}px">오늘사면 내일도착</text>`
-        } else if(isRocket) {
-          return `<text 
-          x="${width * defaultPositions.isRocket.x}" 
-          y="${height * defaultPositions.isRocket.y}" 
-          fill="${defaultPositions.isRocket.color}"
-          font-weight="${defaultPositions.isRocket.weight}"
-          font-size="${defaultPositions.isRocket.fontSize}"
-          style="letter-spacing: ${defaultPositions.isRocket.letterSpacing}px">로켓 배송</text>`
-        }
-      }
 
       const svgText = `
         <svg width="${width}" height="${height}">
@@ -369,7 +316,21 @@ export class ImageProcessor {
             font-size="${defaultPositions.features.fontSize}"
             style="letter-spacing: ${defaultPositions.features.letterSpacing}px">특징: ${features}</text>
           ` : ''}
-          ${deliveryText()}
+         ${isRocket ?`<text 
+          x="${width * defaultPositions.isNextDayDelivery.x}" 
+          y="${height * defaultPositions.isNextDayDelivery.y}" 
+          fill="${defaultPositions.isNextDayDelivery.color}"
+          font-weight="${defaultPositions.isNextDayDelivery.weight}"
+          font-size="${defaultPositions.isNextDayDelivery.fontSize}"
+          style="letter-spacing: ${defaultPositions.isNextDayDelivery.letterSpacing}px">오늘사면 내일도착</text>
+          <text 
+          x="${width * defaultPositions.isRocket.x}" 
+          y="${height * defaultPositions.isRocket.y}" 
+          fill="${defaultPositions.isRocket.color}"
+          font-weight="${defaultPositions.isRocket.weight}"
+          font-size="${defaultPositions.isRocket.fontSize}"
+          style="letter-spacing: ${defaultPositions.isRocket.letterSpacing}px">로켓 배송</text>
+          ` : ''}
         </svg>`;
 
       // 이미지 합성
@@ -448,7 +409,6 @@ export class ImageProcessor {
           product.productPrice.toLocaleString(),
           product.rank,
           product.isRocket || false,
-          product.isFreeShipping || false,
           product.discountRate || 0,
           product.rating || 0,
           product.ratingCount || 0,
@@ -527,7 +487,6 @@ export class ImageProcessor {
         testData.productInfo.productPrice,
         testData.productInfo.rank,
         testData.productInfo.isRocket,
-        testData.productInfo.isFreeShipping
       );
 
       console.log('이미지 생성 완료!');

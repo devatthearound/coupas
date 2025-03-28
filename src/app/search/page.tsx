@@ -106,35 +106,60 @@ export default function SearchPage() {
         <ProductLimitSelector limit={limit} setLimit={setLimit} />
 
         {/* Search Results */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {searchResults.slice(0, limit).map((product) => {
-            const productKey = getProductKey(product);
-            const selectedIndex = selectedProducts.findIndex(p => 
-              getProductKey(p) === productKey
-            );
-            const isSelected = selectedIndex !== -1;
+        {isLoading ? (
+          // 검색 중일 때 표시할 로딩 UI
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-16 h-16 mb-4">
+              <svg className="animate-spin w-full h-full text-[#514FE4] dark:text-[#6C63FF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <p className="text-lg text-gray-600 dark:text-gray-400">검색 중입니다...</p>
+          </div>
+        ) : searchResults.length === 0 ? (
+          // 검색 결과가 없을 때 표시할 UI
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="w-16 h-16 mb-4 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">검색 결과가 없습니다</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">다른 검색어로 시도해보세요</p>
+          </div>
+        ) : (
+          // 검색 결과가 있을 때 표시할 기존 그리드
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {searchResults.slice(0, limit).map((product) => {
+              const productKey = getProductKey(product);
+              const selectedIndex = selectedProducts.findIndex(p => 
+                getProductKey(p) === productKey
+              );
+              const isSelected = selectedIndex !== -1;
 
-            return (
-              <ProductCard
-                key={productKey}
-                product={product}
-                isSelected={isSelected}
-                selectIndex={selectedIndex + 1}
-                onSelect={() => {
-                  if (isSelected) {
-                    setSelectedProducts(prev => 
-                      prev.filter(p => getProductKey(p) !== productKey)
-                    );
-                  } else if (selectedProducts.length < limit) {
-                    setSelectedProducts(prev => [...prev, product]);
-                  } else {
-                    toast.error(`최대 ${limit}개까지 선택할 수 있습니다`);
-                  }
-                }}
-              />
-            );
-          })}
-        </div>
+              return (
+                <ProductCard
+                  key={productKey}
+                  product={product}
+                  isSelected={isSelected}
+                  selectIndex={selectedIndex + 1}
+                  onSelect={() => {
+                    if (isSelected) {
+                      setSelectedProducts(prev => 
+                        prev.filter(p => getProductKey(p) !== productKey)
+                      );
+                    } else if (selectedProducts.length < limit) {
+                      setSelectedProducts(prev => [...prev, product]);
+                    } else {
+                      toast.error(`최대 ${limit}개까지 선택할 수 있습니다`);
+                    }
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Bottom Navigation */}

@@ -3,12 +3,13 @@
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { ProductData } from '../types';
+import { ProductData } from '@/services/coupang/types';
 import { VideoPreviewModal } from '../components/VideoPreviewModal';
 import {  DropResult } from 'react-beautiful-dnd';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
 import { isElectron } from '@/utils/environment';
 import Image from 'next/image';
+import ProductEditor from '../components/ProductEditor';
 
 export default function VideoCreationPage() {
   return (
@@ -18,12 +19,18 @@ export default function VideoCreationPage() {
   );
 }
 
+type ExtendedProductData = ProductData & {
+  rating: number;
+  ratingCount: number;
+  features: string;
+  isFreeShipping: boolean;
+  discountRate: number;
+}
+
 function VideoCreationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedProducts, setSelectedProducts] = useState<ProductData[]>([]);
-  // 상품정보 JSON으로 사용자 입력 받기
-  const [productInfo, setProductInfo] = useState<string>('');
+  const [selectedProducts, setSelectedProducts] = useState<ExtendedProductData[]>([]);
   // 비디오 제목
   const [videoTitle, setVideoTitle] = useState('');
   // 비디오 설명
@@ -66,6 +73,12 @@ function VideoCreationContent() {
 
   // 로고 이미지 상태 추가
   const [logoPath, setLogoPath] = useState<string>('');
+
+  // 이미지 표시 시간 상태 추가
+  const [imageDisplayDuration, setImageDisplayDuration] = useState<number>(3);
+
+  // 저장 경로 상태 추가
+  const [outputDirectory, setOutputDirectory] = useState<string>('');
 
   const skinOptions = [
     { label: '기본 스킨', value: 'default', description: '깔끔한 기본 디자인' },
@@ -223,12 +236,24 @@ function VideoCreationContent() {
     }
   };
 
+  // 저장 경로 선택 핸들러 추가
+  const handleSelectOutputDirectory = async () => {
+    try {
+      const directoryPath = await window.electron.selectDirectory();
+      if (directoryPath) {
+        setOutputDirectory(directoryPath);
+      }
+    } catch (error) {
+      console.error('저장 경로 선택 중 오류:', error);
+    }
+  };
+
   const generateVideo = async () => {
     if(!videoTitle) {
       toast.error('키워드를 입력해주세요.');
       return;
     }
-    if(!productInfo) {
+    if(selectedProducts.length === 0) {
       toast.error('상품 정보를 입력해주세요.');
       return;
     }
@@ -242,6 +267,10 @@ function VideoCreationContent() {
     }
     if(!backgroundMusic) {
       toast.error('배경 음악을 선택해주세요.');
+      return;
+    }
+    if(!outputDirectory) {
+      toast.error('저장 경로를 선택해주세요.');
       return;
     }
 
@@ -259,35 +288,16 @@ function VideoCreationContent() {
         logoPath
       });
       
-      // 상품 정보 파싱 시도
-      let parsedProductInfo;
-      try {
-        parsedProductInfo = JSON.parse(productInfo);
-        // 각 상품에 대해 필수 필드 검증
-        if (!parsedProductInfo.every((product: ProductData) => 
-          product.productName && 
-          product.productPrice && 
-          product.productImage && // 이미지 URL 필수 확인
-          product.shortUrl
-        )) {
-          throw new Error('일부 상품 정보가 누락되었습니다.');
-        }
-        console.log('파싱된 상품 정보:', parsedProductInfo);
-      } catch (parseError) {
-        console.error('상품 정보 파싱 오류:', parseError);
-        toast.error('상품 정보 JSON 형식이 올바르지 않습니다.');
-        setIsProcessing(false);
-        return;
-      }
-      
       const result = await window.electron.combineVideosAndImages(
         videoTitle,
         introVideo,
         outroVideo,
         backgroundMusic,
         backgroundTemplatePath,
-        parsedProductInfo, // 이미지 URL을 포함한 전체 상품 정보 전달
-        logoPath
+        selectedProducts,
+        logoPath,
+        outputDirectory,
+        imageDisplayDuration
       );
 
       console.log('비디오 합성 결과:', result);
@@ -299,6 +309,11 @@ function VideoCreationContent() {
           setGeneratedVideoUrl(result.outputPath);
         }
         toast.success('비디오 합성이 완료되었습니다!');
+        
+        // 폴더 열기 확인 팝업
+        if (confirm('영상 생성이 완료되었습니다. 해당 폴더를 여시겠습니까?')) {
+          await window.electron.openFolder(outputDirectory);
+        }
       } else {
         setProgress('');
         console.error('합성 실패 상세 오류:', result.error);
@@ -322,10 +337,9 @@ function VideoCreationContent() {
   };
 
   const generateComment = useCallback((): string => {
-    if (!productInfo) return '';
+    if (selectedProducts.length === 0) return '';
 
     try {
-      const products = JSON.parse(productInfo);
       const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
       
       const templates = {
@@ -344,7 +358,7 @@ function VideoCreationContent() {
           `\n상세정보 👉 ${product.shortUrl}\n`
       };
 
-      const productsText = products.map((product: any, index: number) => 
+      const productsText = selectedProducts.map((product: any, index: number) => 
         templates[commentTemplate](product, index)
       ).join('\n');
 
@@ -352,252 +366,30 @@ function VideoCreationContent() {
 
       return header + productsText + footer;
     } catch (error) {
-      console.error('상품 정보 파싱 오류:', error);
+      console.error('상품 정보 처리 오류:', error);
       return '';
     }
-  }, [productInfo, commentTemplate]);
+  }, [selectedProducts, commentTemplate]);
 
   // URL 파라미터에서 상품 정보 가져오기
   useEffect(() => {
-    // const searchParams = new URLSearchParams(window.location.search);
-    // const productsParam = searchParams.get('products');
-    // if (productsParam) {
-    //   try {
-    //     const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
-    //     // 상품 정보를 보기 좋게 포맷팅하여 설정
-    //     setProductInfo(JSON.stringify({
-    //       productId: '1',
-    //       productName: '상품명',
-    //       productPrice: 10000,
-    //       isRocket: false,
-    //       isFreeShipping: false,
-    //       shortUrl: 'https://www.naver.com',
-    //       productImage: 'https://www.naver.com',
-    //       originalPrice: 10000,
-    //       productUrl: 'https://www.naver.com',
-    //       reviewCount: 100,
-    //       category: '카테고리',
-    //     }, null, 2));
-    //   } catch (error) {
-    //     console.error('상품 정보 파싱 오류:', error);
-    //     toast.error('상품 정보를 불러오는데 실패했습니다.');
-    //   }
-    // }
-    setProductInfo(JSON.stringify([{
-      productId: '1',
-      productName: '상품명',
-      productPrice: 10000,
-      isRocket: false,
-      isFreeShipping: false,
-      shortUrl: 'https://www.naver.com',
-      productImage: 'https://ads-partners.coupang.com/image1/aZjOIDnZQLX1dMhZaWJ6FQOGHt73qcMABFezhdDsDk-NjA8IssLulpDvc_m-BXkSAxIJ7T1_THeCV4Ic38i8ZLSzZht3gVL5Ztm80AqDAXkb4KZwVsrKjQUveTZtnihP5p9TUIivA0zqdeGOaN57ArxSZrQHKSd4jYsO5JvS7FRHn0B2-5M_oWF3lXy1mC9QI1Qd8lfYCAQBIKDDHmb9qUasLalk_WY4BhV26xZI7Zg7RCftIsaKxQ9k1ZcLagL3rNZbXhQtALGUuHjvWEOL3TfofrXQfOOALWkt9-qgskO0HapdtUfxxVd2kQ==',
-      originalPrice: 10000,
-      productUrl: 'https://www.naver.com',
-      reviewCount: 100,
-      category: '카테고리',
-    }], null, 2));
-  }, []);
-
-  // 상품 정보 수정을 위한 컴포넌트
-  function ProductEditor({ products, onChange }: { 
-    products: ProductData[], 
-    onChange: (products: ProductData[]) => void 
-  }) {
-    const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-
-    // 단순화된 헤더 클릭 핸들러
-    const handleHeaderClick = (index: number) => {
-      setExpandedIndex(expandedIndex === index ? null : index);
-    };
-
-    // 입력 필드 변경 핸들러
-    const handleProductChange = (index: number, field: keyof ProductData, value: any) => {
-      const updatedProducts = [...products];
-      updatedProducts[index] = {
-        ...updatedProducts[index],
-        [field]: value
-      };
-      onChange(updatedProducts);
-    };
-
-    return (
-      <div className="space-y-2">
-        {products.map((product, index) => (
-          <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg">
-            {/* 헤더 영역 */}
-            <div
-              className="w-full px-4 py-3 flex items-center justify-between text-left
-                hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg cursor-pointer"
-              onClick={() => handleHeaderClick(index)}
-            >
-              <div className="w-10 h-10 rounded-md overflow-hidden">
-                <Image width={40} height={40} src={product.productImage} alt={product.productName} className="w-full h-full object-cover" />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {index + 1}순위: {product.productName || '상품명 미입력'}
-                </span>
-                <span className="text-sm text-gray-500">
-                  {product.productPrice?.toLocaleString()}원
-                </span>
-              </div>
-              <svg
-                className={`w-5 h-5 transform transition-transform ${
-                  expandedIndex === index ? 'rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-
-            {/* 컨텐츠 영역 */}
-            {expandedIndex === index && (
-              <div className="px-4 pb-4">
-                <div className="grid gap-3">
-                  {/* 입력 필드들 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      상품명
-                    </label>
-                    <input
-                      type="text"
-                      value={product.productName}
-                      onChange={(e) => handleProductChange(index, 'productName', e.target.value)}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                    />
-                  </div>
-                  
-                  {/* 다른 입력 필드들... */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      가격
-                    </label>
-                    <input
-                      type="number"
-                      value={product.productPrice}
-                      onChange={(e) => handleProductChange(index, 'productPrice', Number(e.target.value))}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      평점 (별점)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={product.rating || 0}
-                      onChange={(e) => {
-                        handleProductChange(index, 'rating', Number(e.target.value));
-                      }}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      평점 갯수
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={product.ratingCount || 0}
-                      onChange={(e) => {
-                        handleProductChange(index, 'ratingCount', Number(e.target.value));
-                      }}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      특징
-                    </label>
-                    <textarea
-                      value={product.features || ''}
-                      onChange={(e) => {
-                        handleProductChange(index, 'features', e.target.value);
-                      }}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4] min-h-[80px]"
-                      placeholder="상품의 주요 특징을 입력하세요"
-                    />
-                  </div>
-
-                  <div className="flex gap-4">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={product.isRocket}
-                        onChange={(e) => {
-                          handleProductChange(index, 'isRocket', e.target.checked);
-                        }}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">로켓배송</span>
-                    </label>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={product.isFreeShipping}
-                        onChange={(e) => {
-                          handleProductChange(index, 'isFreeShipping', e.target.checked);
-                        }}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">무료배송</span>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      상품 링크
-                    </label>
-                    <input
-                      type="text"
-                      value={product.shortUrl}
-                      onChange={(e) => {
-                        handleProductChange(index, 'shortUrl', e.target.value);
-                      }}
-                      className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                        py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // JSON 문자열을 파싱하여 상품 배열로 변환하는 함수
-  const parseProductInfo = useCallback(() => {
-    try {
-      if (!productInfo) return []; // productInfo가 빈 값인 경우 빈 배열 반환
-      return JSON.parse(productInfo);
-    } catch (error) {
-      console.error('상품 정보 파싱 오류:', error);
-      return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    const productsParam = searchParams.get('products');
+    if (productsParam) {
+      try {
+        const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
+        setSelectedProducts(decodedProducts);
+      } catch (error) {
+        console.error('상품 정보 파싱 오류:', error);
+        toast.error('상품 정보를 불러오는데 실패했습니다.');
+      }
     }
-  }, [productInfo]);
+  }, []);
 
   // 상품 정보가 변경될 때 JSON 문자열 업데이트
-  const handleProductsChange = useCallback((updatedProducts: ProductData[]) => {
-    setProductInfo(JSON.stringify(updatedProducts, null, 2));
-  }, []);
+  const handleProductsChange =  (updatedProducts: ExtendedProductData[]) => {
+    setSelectedProducts(updatedProducts);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -747,7 +539,7 @@ function VideoCreationContent() {
               />
             </div>
             {/* 로고 이미지 선택 버튼 추가 */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 로고 이미지
               </label>
@@ -765,7 +557,7 @@ function VideoCreationContent() {
                 </span>
                 {logoPath ? logoPath.split('/').pop() : '선택된 파일 없음'}
               </button>
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -886,22 +678,72 @@ function VideoCreationContent() {
               </button>
             </div> */}
 
+            {/* 이미지 표시 시간 설정 추가 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                상품 이미지 표시 시간 (초)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={imageDisplayDuration}
+                  onChange={(e) => setImageDisplayDuration(Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-sm text-gray-500 min-w-[3ch]">
+                  {imageDisplayDuration}초
+                </span>
+              </div>
+            </div>
+
+            {/* 저장 경로 선택 버튼 추가 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                저장 경로
+              </label>
+              <button
+                onClick={handleSelectOutputDirectory}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 rounded text-left transition-colors"
+              >
+                <span className="inline-block mr-4 py-2 px-4
+                  rounded-full border-0
+                  text-sm font-semibold
+                  bg-[#514FE4]/10 text-[#514FE4]
+                  dark:bg-[#6C63FF]/10 dark:text-[#6C63FF]
+                  hover:bg-[#514FE4]/20">
+                  폴더 선택
+                </span>
+                {outputDirectory ? outputDirectory : '선택된 폴더 없음'}
+              </button>
+            </div>
 
             {/* 상품 정보 수정 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 상품 정보 수정
               </label>
-              <ProductEditor
-                products={parseProductInfo()}
-                onChange={handleProductsChange}
-              />
+              <div className="space-y-4">
+                {selectedProducts.map((product, index) => (
+                  <ProductEditor
+                    key={product.productId}
+                    products={product}
+                    onChange={(updatedProduct) => {
+                      const newProducts = [...selectedProducts];
+                      newProducts[index] = updatedProduct;
+                      setSelectedProducts(newProducts);
+                    }}
+                  />
+                ))}
+              </div>
             </div>
             <button
               onClick={generateVideo}
               className="flex items-center justify-center gap-1 px-4 py-2 bg-[#514FE4] text-white rounded-lg hover:bg-[#4140B3] 
                 dark:bg-[#6C63FF] dark:hover:bg-[#5B54E8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!videoTitle || !productInfo || !introVideo || !outroVideo || !backgroundMusic}
+              disabled={!videoTitle || selectedProducts.length === 0 || !introVideo || !outroVideo || !backgroundMusic || !outputDirectory}
             >
                 영상 생성
             </button>
