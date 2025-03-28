@@ -148,9 +148,10 @@ export class EnhancedVideoProcessor {
     introVideo: string,
     outroVideo: string,
     backgroundMusic: string,
-    backgroundTemplatePath: string,
+    // backgroundTemplatePath: string,
     productInfo: {
       productName: string;      // 상품명
+      productImage: string;     // 상품 이미지
       productPrice: number;     // 가격
       rating?: number;          // 평점 (별점) - 선택적
       ratingCount?: number;     // 평점 갯수 - 선택적
@@ -225,7 +226,7 @@ export class EnhancedVideoProcessor {
           productImagePaths = await ImageProcessor.createMultipleProductImages(
             videoTitle,
             productsList,
-            backgroundTemplatePath,
+            // backgroundTemplatePath,
             outputDir
           );
           console.log('생성된 제품 이미지 경로들:', productImagePaths);

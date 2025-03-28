@@ -295,17 +295,17 @@ ipcMain.handle('combine-videos-and-images', async (
     checkFile(outroVideo, '아웃로 비디오');
     checkFile(backgroundMusic, '배경 음악');
     
-    // 배경 템플릿 이미지는 선택적일 수 있음
-    if (backgroundTemplatePath && !fs.existsSync(backgroundTemplatePath)) {
-      console.warn(`배경 템플릿 이미지를 찾을 수 없습니다: ${backgroundTemplatePath}`);
-    }
+    // // 배경 템플릿 이미지는 선택적일 수 있음
+    // if (backgroundTemplatePath && !fs.existsSync(backgroundTemplatePath)) {
+    //   console.warn(`배경 템플릿 이미지를 찾을 수 없습니다: ${backgroundTemplatePath}`);
+    // }
     
     const result = await EnhancedVideoProcessor.combineVideosAndImages(
       videoTitle,
       introVideo,
       outroVideo,
       backgroundMusic,
-      backgroundTemplatePath,
+      // backgroundTemplatePath,
       productInfo,
       logoPath
     )

@@ -22,7 +22,7 @@ function ProductsContent() {
   const searchParams = useSearchParams();
   const [selectedProducts, setSelectedProducts] = useState<ProductData[]>([]);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [commentTemplate, setCommentTemplate] = useState<'template1' | 'template2' | 'custom'>('template1');
+  const [commentTemplate, setCommentTemplate] = useState<'template1' | 'custom'>('template1');
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [customTemplate, setCustomTemplate] = useState<string>('');
 
@@ -40,8 +40,6 @@ function ProductsContent() {
   }, [searchParams]);
 
   const onDragEnd = (result: DropResult) => {
-    console.log('Drag ended:', result);
-    
     if (!result.destination) {
       return;
     }
@@ -49,14 +47,12 @@ function ProductsContent() {
     const sourceIndex = result.source.index;
     const destinationIndex = result.destination.index;
 
-    console.log(`Moving item from index ${sourceIndex} to ${destinationIndex}`);
-
     const newProducts = Array.from(selectedProducts);
     const [removed] = newProducts.splice(sourceIndex, 1);
     newProducts.splice(destinationIndex, 0, removed);
 
-    console.log('Updated products:', newProducts);
-    setSelectedProducts(newProducts);
+    // 순위 업데이트를 위해 새로운 배열로 상태 업데이트
+    setSelectedProducts([...newProducts]);
   };
 
   const generateComment = (products: ProductData[]): string => {
@@ -69,13 +65,6 @@ function ProductsContent() {
         `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
         `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
         `\n구매링크: ${product.shortUrl}\n`,
-
-      template2: (product: ProductData, index: number) =>
-        `💫 ${index + 1}위 추천! ${product.productName}\n` +
-        `💰 특가: ${product.productPrice.toLocaleString()}원\n` +
-        `${product.isRocket ? '🚀 로켓배송으로 빠른배송\n' : ''}` +
-        `${product.isFreeShipping ? '무료배송 가능\n' : ''}` +
-        `\n상세정보 👉 ${product.shortUrl}\n`,
 
       custom: (product: ProductData, index: number) =>
         customTemplate
@@ -91,9 +80,7 @@ function ProductsContent() {
       templates[commentTemplate === 'custom' ? 'custom' : commentTemplate](product, index)
     ).join('\n');
 
-    const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
-
-    return header + productsText + footer;
+    return header + productsText;
   };
 
   const handleDownload = async () => {
@@ -172,22 +159,11 @@ function ProductsContent() {
     }
   };
 
-  // Add this new function to handle JSON copying
-  const handleCopyJson = () => {
-    if (!selectedProducts.length) {
-      toast.error('선택된 상품이 없습니다.');
-      return;
-    }
-
-    try {
-      // Format JSON with indentation for better readability
-      const jsonData = JSON.stringify(selectedProducts, null, 4);
-      navigator.clipboard.writeText(jsonData);
-      toast.success('JSON 데이터가 클립보드에 복사되었습니다!');
-    } catch (error) {
-      console.error('JSON 복사 실패:', error);
-      toast.error('JSON 복사 중 오류가 발생했습니다.');
-    }
+  const handleDelete = (index: number) => {
+    const newProducts = [...selectedProducts];
+    newProducts.splice(index, 1);
+    setSelectedProducts(newProducts);
+    toast.success('상품이 삭제되었습니다');
   };
 
   return (
@@ -227,8 +203,8 @@ function ProductsContent() {
                       >
                         {selectedProducts.map((product, index) => (
                           <Draggable 
-                            key={`${product.productId}`}
-                            draggableId={`${product.productId}`}
+                            key={`${product.productId}-${index}`}
+                            draggableId={`${product.productId}-${index}`}
                             index={index}
                           >
                             {(provided, snapshot) => (
@@ -242,11 +218,13 @@ function ProductsContent() {
                                   dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
                                   cursor-grab active:cursor-grabbing`}
                                 style={{
-                                  gridTemplateColumns: '40px 80px 320px 112px 60px 1fr',
+                                  gridTemplateColumns: '40px 80px 320px 112px 60px 1fr 40px',
                                   ...provided.draggableProps.style
                                 }}
                               >
-                                <div className="font-bold text-lg text-[#514FE4] text-center">{index + 1}</div>
+                                <div className="font-bold text-lg text-[#514FE4] text-center">
+                                  {index + 1}
+                                </div>
                                 <div>
                                   <div className="w-[50px] h-[50px] relative">
                                     <Image
@@ -285,6 +263,28 @@ function ProductsContent() {
                                     <ArrowTopRightOnSquareIcon className="w-4 h-4 text-gray-500 hover:text-[#514FE4] dark:hover:text-[#6C63FF]" />
                                   </button>
                                 </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(index);
+                                  }}
+                                  className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                                  title="삭제"
+                                >
+                                  <svg 
+                                    className="w-5 h-5 text-red-500" 
+                                    fill="none" 
+                                    viewBox="0 0 24 24" 
+                                    stroke="currentColor"
+                                  >
+                                    <path 
+                                      strokeLinecap="round" 
+                                      strokeLinejoin="round" 
+                                      strokeWidth={2} 
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                                    />
+                                  </svg>
+                                </button>
                               </div>
                             )}
                           </Draggable>
@@ -332,18 +332,7 @@ function ProductsContent() {
                           }`}
                       >
                         <span className="text-2xl mb-1">🏆</span>
-                        <span className="text-xs">간단히</span>
-                      </button>
-                      <button 
-                        onClick={() => setCommentTemplate('template2')}
-                        className={`flex flex-col items-center p-3 border rounded-lg transition-colors
-                          ${commentTemplate === 'template2' 
-                            ? 'border-[#514FE4] bg-[#514FE4]/5' 
-                            : 'hover:border-[#514FE4]'
-                          }`}
-                      >
-                        <span className="text-2xl mb-1">💫</span>
-                        <span className="text-xs">상세</span>
+                        <span className="text-xs">기본</span>
                       </button>
                       <button 
                         onClick={() => setCommentTemplate('custom')}
@@ -386,31 +375,6 @@ function ProductsContent() {
                       </div>
                     </div>
                   )}
-
-                  {/* 표시 항목 선택 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      표시 항목
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <label className="flex items-center">
-                        <input type="checkbox" className="form-checkbox text-[#514FE4]" defaultChecked />
-                        <span className="ml-2 text-sm">가격</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="form-checkbox text-[#514FE4]" defaultChecked />
-                        <span className="ml-2 text-sm">평점</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="form-checkbox text-[#514FE4]" defaultChecked />
-                        <span className="ml-2 text-sm">리뷰 수</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input type="checkbox" className="form-checkbox text-[#514FE4]" defaultChecked />
-                        <span className="ml-2 text-sm">배송 정보</span>
-                      </label>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -502,27 +466,6 @@ function ProductsContent() {
                 이전
               </button>
               
-              {/* JSON 복사 버튼 */}
-              <div className="relative group">
-                <button
-                  onClick={handleCopyJson}
-                  disabled={selectedProducts.length === 0}
-                  className={`px-6 py-2.5 rounded-lg transition-colors font-medium flex items-center gap-2
-                    ${selectedProducts.length > 0
-                      ? 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-800/30 dark:hover:bg-blue-700/40 text-blue-700 dark:text-blue-300'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                    }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                  JSON 복사
-                </button>
-                <div className="absolute bottom-full mb-2 hidden group-hover:block w-48 bg-gray-900 text-white 
-                  text-sm rounded-lg p-2 shadow-lg z-10">
-                  상품 정보를 JSON 형식으로 복사
-                </div>
-              </div>
               
               {/* 다운로드 버튼 */}
               <div className="relative group">
@@ -556,11 +499,11 @@ function ProductsContent() {
                     bg-gradient-to-r from-purple-500 to-indigo-500 opacity-80
                     text-white/90 hover:opacity-100 hover:shadow-lg"
                 >
-                  <LockClosedIcon className="w-4 h-4 animate-pulse" />
+                  {/* <LockClosedIcon className="w-4 h-4 animate-pulse" /> */}
                   영상 내보내기
-                  <span className="ml-1 text-xs px-2 py-0.5 bg-white/20 rounded-full">PRO</span>
+                  {/* <span className="ml-1 text-xs px-2 py-0.5 bg-white/20 rounded-full">PRO</span> */}
                 </button>
-                <div className="absolute bottom-full mb-2 hidden group-hover:block w-56 
+                {/* <div className="absolute bottom-full mb-2 hidden group-hover:block w-56 
                   bg-gradient-to-r from-purple-600 to-indigo-600 text-white
                   text-sm rounded-lg p-3 shadow-xl transform transition-all duration-200
                   border border-white/10 backdrop-blur-sm">
@@ -571,7 +514,7 @@ function ProductsContent() {
                   <p className="text-xs text-white/80 mt-1">
                     업그레이드하여 고품질 영상을 제작해보세요
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
