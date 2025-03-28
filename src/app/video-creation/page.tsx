@@ -8,6 +8,7 @@ import { VideoPreviewModal } from '../components/VideoPreviewModal';
 import {  DropResult } from 'react-beautiful-dnd';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
 import { isElectron } from '@/utils/environment';
+import Image from 'next/image';
 
 export default function VideoCreationPage() {
   return (
@@ -358,18 +359,43 @@ function VideoCreationContent() {
 
   // URL 파라미터에서 상품 정보 가져오기
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const productsParam = searchParams.get('products');
-    if (productsParam) {
-      try {
-        const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
-        // 상품 정보를 보기 좋게 포맷팅하여 설정
-        setProductInfo(JSON.stringify(decodedProducts, null, 2));
-      } catch (error) {
-        console.error('상품 정보 파싱 오류:', error);
-        toast.error('상품 정보를 불러오는데 실패했습니다.');
-      }
-    }
+    // const searchParams = new URLSearchParams(window.location.search);
+    // const productsParam = searchParams.get('products');
+    // if (productsParam) {
+    //   try {
+    //     const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
+    //     // 상품 정보를 보기 좋게 포맷팅하여 설정
+    //     setProductInfo(JSON.stringify({
+    //       productId: '1',
+    //       productName: '상품명',
+    //       productPrice: 10000,
+    //       isRocket: false,
+    //       isFreeShipping: false,
+    //       shortUrl: 'https://www.naver.com',
+    //       productImage: 'https://www.naver.com',
+    //       originalPrice: 10000,
+    //       productUrl: 'https://www.naver.com',
+    //       reviewCount: 100,
+    //       category: '카테고리',
+    //     }, null, 2));
+    //   } catch (error) {
+    //     console.error('상품 정보 파싱 오류:', error);
+    //     toast.error('상품 정보를 불러오는데 실패했습니다.');
+    //   }
+    // }
+    setProductInfo(JSON.stringify([{
+      productId: '1',
+      productName: '상품명',
+      productPrice: 10000,
+      isRocket: false,
+      isFreeShipping: false,
+      shortUrl: 'https://www.naver.com',
+      productImage: 'https://ads-partners.coupang.com/image1/aZjOIDnZQLX1dMhZaWJ6FQOGHt73qcMABFezhdDsDk-NjA8IssLulpDvc_m-BXkSAxIJ7T1_THeCV4Ic38i8ZLSzZht3gVL5Ztm80AqDAXkb4KZwVsrKjQUveTZtnihP5p9TUIivA0zqdeGOaN57ArxSZrQHKSd4jYsO5JvS7FRHn0B2-5M_oWF3lXy1mC9QI1Qd8lfYCAQBIKDDHmb9qUasLalk_WY4BhV26xZI7Zg7RCftIsaKxQ9k1ZcLagL3rNZbXhQtALGUuHjvWEOL3TfofrXQfOOALWkt9-qgskO0HapdtUfxxVd2kQ==',
+      originalPrice: 10000,
+      productUrl: 'https://www.naver.com',
+      reviewCount: 100,
+      category: '카테고리',
+    }], null, 2));
   }, []);
 
   // 상품 정보 수정을 위한 컴포넌트
@@ -379,6 +405,12 @@ function VideoCreationContent() {
   }) {
     const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
+    // 단순화된 헤더 클릭 핸들러
+    const handleHeaderClick = (index: number) => {
+      setExpandedIndex(expandedIndex === index ? null : index);
+    };
+
+    // 입력 필드 변경 핸들러
     const handleProductChange = (index: number, field: keyof ProductData, value: any) => {
       const updatedProducts = [...products];
       updatedProducts[index] = {
@@ -392,12 +424,16 @@ function VideoCreationContent() {
       <div className="space-y-2">
         {products.map((product, index) => (
           <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg">
-            {/* 아코디언 헤더 */}
-            <button
-              onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
+            {/* 헤더 영역 */}
+            <div
               className="w-full px-4 py-3 flex items-center justify-between text-left
-                hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg"
+                hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-lg cursor-pointer"
+              onClick={() => handleHeaderClick(index)}
             >
+              <div className="w-10 h-10 rounded-md overflow-hidden">
+                <Image width={40} height={40} src={product.productImage} alt={product.productName} className="w-full h-full object-cover" />
+              </div>
+
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {index + 1}순위: {product.productName || '상품명 미입력'}
@@ -416,79 +452,13 @@ function VideoCreationContent() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
-            </button>
+            </div>
 
-            {/* 아코디언 컨텐츠 */}
+            {/* 컨텐츠 영역 */}
             {expandedIndex === index && (
               <div className="px-4 pb-4">
                 <div className="grid gap-3">
-                  {/* 상품 이미지 미리보기 및 입력 필드 추가 */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      상품 이미지
-                    </label>
-                    <div className="flex items-start gap-4">
-                      {/* 이미지 미리보기 */}
-                      <div className="w-24 h-24 relative border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                        {product.productImage ? (
-                          <img
-                            src={product.productImage}
-                            alt={product.productName}
-                            className="w-full h-full object-contain"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                            <span className="text-gray-400 text-xs text-center">이미지 없음</span>
-                          </div>
-                        )}
-                      </div>
-                      {/* 이미지 URL 입력 */}
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          value={product.productImage || ''}
-                          onChange={(e) => handleProductChange(index, 'productImage', e.target.value)}
-                          className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
-                            py-2 px-3 focus:outline-none focus:border-[#514FE4]"
-                          placeholder="상품 이미지 URL을 입력하세요"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 순서 변경 버튼 */}
-                  <div className="flex justify-end gap-2">
-                    {index > 0 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const newProducts = [...products];
-                          [newProducts[index - 1], newProducts[index]] = [newProducts[index], newProducts[index - 1]];
-                          onChange(newProducts);
-                          setExpandedIndex(index - 1);
-                        }}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
-                      >
-                        ↑ 위로
-                      </button>
-                    )}
-                    {index < products.length - 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const newProducts = [...products];
-                          [newProducts[index], newProducts[index + 1]] = [newProducts[index + 1], newProducts[index]];
-                          onChange(newProducts);
-                          setExpandedIndex(index + 1);
-                        }}
-                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400"
-                      >
-                        ↓ 아래로
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 기존 입력 필드들 */}
+                  {/* 입력 필드들 */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       상품명
@@ -502,6 +472,7 @@ function VideoCreationContent() {
                     />
                   </div>
                   
+                  {/* 다른 입력 필드들... */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       가격
@@ -525,7 +496,9 @@ function VideoCreationContent() {
                       max="5"
                       step="0.1"
                       value={product.rating || 0}
-                      onChange={(e) => handleProductChange(index, 'rating', Number(e.target.value))}
+                      onChange={(e) => {
+                        handleProductChange(index, 'rating', Number(e.target.value));
+                      }}
                       className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
                         py-2 px-3 focus:outline-none focus:border-[#514FE4]"
                     />
@@ -539,7 +512,9 @@ function VideoCreationContent() {
                       type="number"
                       min="0"
                       value={product.ratingCount || 0}
-                      onChange={(e) => handleProductChange(index, 'ratingCount', Number(e.target.value))}
+                      onChange={(e) => {
+                        handleProductChange(index, 'ratingCount', Number(e.target.value));
+                      }}
                       className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
                         py-2 px-3 focus:outline-none focus:border-[#514FE4]"
                     />
@@ -551,7 +526,9 @@ function VideoCreationContent() {
                     </label>
                     <textarea
                       value={product.features || ''}
-                      onChange={(e) => handleProductChange(index, 'features', e.target.value)}
+                      onChange={(e) => {
+                        handleProductChange(index, 'features', e.target.value);
+                      }}
                       className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
                         py-2 px-3 focus:outline-none focus:border-[#514FE4] min-h-[80px]"
                       placeholder="상품의 주요 특징을 입력하세요"
@@ -563,7 +540,9 @@ function VideoCreationContent() {
                       <input
                         type="checkbox"
                         checked={product.isRocket}
-                        onChange={(e) => handleProductChange(index, 'isRocket', e.target.checked)}
+                        onChange={(e) => {
+                          handleProductChange(index, 'isRocket', e.target.checked);
+                        }}
                         className="mr-2"
                       />
                       <span className="text-sm">로켓배송</span>
@@ -572,7 +551,9 @@ function VideoCreationContent() {
                       <input
                         type="checkbox"
                         checked={product.isFreeShipping}
-                        onChange={(e) => handleProductChange(index, 'isFreeShipping', e.target.checked)}
+                        onChange={(e) => {
+                          handleProductChange(index, 'isFreeShipping', e.target.checked);
+                        }}
                         className="mr-2"
                       />
                       <span className="text-sm">무료배송</span>
@@ -586,7 +567,9 @@ function VideoCreationContent() {
                     <input
                       type="text"
                       value={product.shortUrl}
-                      onChange={(e) => handleProductChange(index, 'shortUrl', e.target.value)}
+                      onChange={(e) => {
+                        handleProductChange(index, 'shortUrl', e.target.value);
+                      }}
                       className="block w-full text-sm border border-gray-200 dark:border-gray-700 rounded-md
                         py-2 px-3 focus:outline-none focus:border-[#514FE4]"
                     />
