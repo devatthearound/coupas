@@ -161,14 +161,15 @@ export class EnhancedVideoProcessor {
       shortUrl: string;        // 상품 링크
       rank: number;            // 순위
     }[],
-    logoPath: string
+    logoPath: string,
+    outputDirectory: string,
+    imageDisplayDuration: number
   ) {
-    const outputPath = path.join(homedir(), 'Documents', 'Coupas', 'tmp_video_processing', `${videoTitle}.mp4`);
+    const outputPath = path.join(outputDirectory, `${videoTitle}.mp4`);
     
     return new Promise(async (resolve, reject) => {
       try {
         const videoFormat = 'mp4';
-        const imageDisplayDuration = 3;
         const imageFps = 30;
 
         console.log('비디오 처리 시작...');

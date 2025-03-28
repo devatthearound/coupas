@@ -241,6 +241,13 @@ ipcMain.handle('select-image-files', async () => {
   })
   return result.filePaths
 })
+// 디렉토리 선택 다이얼로그
+ipcMain.handle('select-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  return result.filePaths[0];
+}); 
 
 ipcMain.handle('select-image-file', async () => {
   const result = await dialog.showOpenDialog({
@@ -266,17 +273,21 @@ ipcMain.handle('combine-videos-and-images', async (
   backgroundMusic,
   backgroundTemplatePath,
   productInfo,
-  logoPath
+  logoPath,
+  outputDirectory,
+  imageDisplayDuration
 ) => {
   try {
     console.log('비디오 합성 요청 받음:', {
       videoTitle,
-      introVideo,
+      introVideo, 
       outroVideo,
       backgroundMusic,
       backgroundTemplatePath,
       productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array',
-      logoPath
+      logoPath,
+      outputDirectory,
+      imageDisplayDuration
     });
     
     // 파일 존재 여부 확인
@@ -307,7 +318,9 @@ ipcMain.handle('combine-videos-and-images', async (
       backgroundMusic,
       // backgroundTemplatePath,
       productInfo,
-      logoPath
+      logoPath,
+      outputDirectory,
+      imageDisplayDuration
     )
     return result;
   } catch (error) {
@@ -377,3 +390,33 @@ if (!gotTheLock) {
     }
   });
 }
+
+// 폴더 열기 핸들러 추가
+ipcMain.handle('open-folder', async (_, folderPath) => {
+  try {
+    // 폴더가 존재하는지 확인
+    if (!fs.existsSync(folderPath)) {
+      throw new Error('폴더를 찾을 수 없습니다.');
+    }
+    
+    // 운영체제별로 적절한 방법으로 폴더 열기
+    if (process.platform === 'darwin') {
+      // macOS
+      await shell.openPath(folderPath);
+    } else if (process.platform === 'win32') {
+      // Windows
+      await shell.openPath(folderPath);
+    } else {
+      // Linux 등 기타 운영체제
+      await shell.openPath(folderPath);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('폴더 열기 실패:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '폴더를 열 수 없습니다.' 
+    };
+  }
+});
