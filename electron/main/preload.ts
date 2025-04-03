@@ -95,6 +95,23 @@ const electron = {
 
     // 폴더 열기
     openFolder: (folderPath: string) => ipcRenderer.invoke('open-folder', folderPath),
+
+    on: (channel: string, callback: (...args: any[]) => void) => {
+      const validChannels = [
+          'update-available',
+          'download-progress',
+          'update-downloaded',
+          'update-error',
+          'console-message'
+      ];
+      if (validChannels.includes(channel)) {
+          ipcRenderer.on(channel, (_, ...args) => callback(...args));
+      }
+    },
+    
+    removeAllListeners: (channel: string) => {
+        ipcRenderer.removeAllListeners(channel);
+    }
 }
 
 contextBridge.exposeInMainWorld('electron', electron)
