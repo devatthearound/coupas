@@ -15,16 +15,16 @@ jobs:
     
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       
       - name: Build Next.js
         run: npm run next:build
@@ -54,7 +54,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
         run: |
           npm run electron:dist
       
@@ -62,7 +62,7 @@ jobs:
       - name: Build and release for Windows
         if: matrix.os == 'windows-latest'
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
         run: |
           npx electron-builder --win --publish always
       
@@ -70,17 +70,22 @@ jobs:
       - name: Build and release for Linux
         if: matrix.os == 'ubuntu-latest'
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
         run: |
           npx electron-builder --linux --publish always
       
       # 생성된 아티팩트 업로드
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-artifacts
           path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.deb
+            dist/*.AppImage
             releases/*.dmg
             releases/*.exe
             releases/*.deb
             releases/*.AppImage
+          if-no-files-found: ignore
