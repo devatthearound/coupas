@@ -192,8 +192,20 @@ app.whenReady().then(() => {
   app.on('open-url', (event, url) => {
     event.preventDefault();
     try {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.protocol === 'coupas-auth:' && parsedUrl.pathname === '/login') {
+      console.log('원본 URL:', url);
+      // URL 정규화
+      const normalizedUrl = url.replace('coupas-auth://', 'coupas-auth:///');
+      const parsedUrl = new URL(normalizedUrl);
+      
+      console.log('파싱된 URL 정보:', {
+        protocol: parsedUrl.protocol,
+        pathname: parsedUrl.pathname,
+        searchParams: Object.fromEntries(parsedUrl.searchParams)
+      });
+  
+      // pathname이 /login 또는 login인 경우를 모두 처리
+      if (parsedUrl.protocol === 'coupas-auth:' && 
+          (parsedUrl.pathname === '/login' || parsedUrl.pathname === 'login')) {
         const accessToken = parsedUrl.searchParams.get('coupas_access_token');
         const refreshToken = parsedUrl.searchParams.get('coupas_refresh_token');
         
@@ -206,9 +218,10 @@ app.whenReady().then(() => {
         }
       }
     } catch (error) {
-      console.error('URL 처리 중 오류:', error);
+      console.error('URL 파싱 중 오류:', error);
     }
   });
+  
 
   createWindow();
 
