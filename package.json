@@ -18,7 +18,6 @@
     "format": "dprint fmt",
     "postinstall": "electron-builder install-app-deps",
     "electron:dist": "electron-builder -m",
-    "electron:dist:deb": "electron-builder --linux deb",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
     "dist": "run-s build electron:dist",
@@ -163,12 +162,6 @@
       "notarize": {
         "teamId": "AJNAL73TT5"
       }
-    },
-    "linux": {
-      "target": [
-        "deb"
-      ],
-      "category": "Development"
     },
     "directories": {
       "output": "releases"

@@ -11,7 +11,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest]
     
     steps:
       - name: Check out Git repository
@@ -49,14 +49,15 @@ jobs:
       
       # 빌드 및 배포 (macOS)
       - name: Build and release for macOS
-        if: matrix.os == 'macos-latest'
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
-        run: |
-          npm run electron:dist
+  if: matrix.os == 'macos-latest'
+  env:
+    APPLE_ID: ${{ secrets.APPLE_ID }}
+    APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}  # 변수명 변경
+    APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
+  run: |
+    npm run electron:dist
+
       
       # 빌드 및 배포 (Windows)
       - name: Build and release for Windows
@@ -66,14 +67,6 @@ jobs:
         run: |
           npx electron-builder --win --publish always
       
-      # 빌드 및 배포 (Linux)
-      - name: Build and release for Linux
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
-        run: |
-          npx electron-builder --linux --publish always
-      
       # 생성된 아티팩트 업로드
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -82,10 +75,6 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.exe
-            dist/*.deb
-            dist/*.AppImage
             releases/*.dmg
             releases/*.exe
-            releases/*.deb
-            releases/*.AppImage
           if-no-files-found: ignore
