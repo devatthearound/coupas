@@ -31,7 +31,7 @@ export default function HomePage() {
             className="px-8 py-3 bg-[#514FE4] hover:bg-[#4140B3] text-white rounded-lg 
               transition-colors duration-200 font-medium"
           >
-            시작하기
+            시작하기(배포)
           </button>
         </div>
       </div>
