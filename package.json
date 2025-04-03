@@ -1,6 +1,6 @@
 {
   "name": "coupas",
-  "version": "0.0.2",
+  "version": "1.0.10",
   "private": true,
   "homepage": "https://growsome.kr",
   "author": {
@@ -17,10 +17,12 @@
     "next:lint": "next lint",
     "format": "dprint fmt",
     "postinstall": "electron-builder install-app-deps",
-    "electron:dist": "electron-builder -m",
+    "electron:dist": "electron-builder -m --publish never",
     "electron:build": "tsup",
     "build": "run-s next:build electron:build",
     "dist": "run-s build electron:dist",
+    "publish": "run-s build electron:publish",
+    "electron:publish": "electron-builder --publish always",
     "dev": "npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
@@ -89,7 +91,10 @@
       {
         "provider": "github",
         "owner": "devatthearound",
-        "repo": "coupas"
+        "repo": "coupas",
+        "private": false,
+        "vPrefixedTagName": true,
+        "releaseType": "release"
       }
     ],
     "asarUnpack": [
