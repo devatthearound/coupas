@@ -8,6 +8,7 @@ import { YouTubeUploader } from './quickstart.js';
 import fs from 'fs';
 import path from 'path';
 import { readFile } from 'fs/promises';
+import { autoUpdater } from 'electron-updater';
 
 // 기존 console 메서드 캐싱
 const originalConsole = {
@@ -223,11 +224,75 @@ app.whenReady().then(() => {
   });
   
 
-  createWindow();
+  createWindow().then(() => {
+    // 자동 업데이트 설정
+    setupAutoUpdater();
+  });
+
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+
+
+  // 자동 업데이트 설정
+  autoUpdater.logger = console;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  
+  // 업데이트 이벤트 리스너
+  autoUpdater.on('checking-for-update', () => {
+    console.log('업데이트 확인 중...');
+  });
+  
+  autoUpdater.on('update-available', (info) => {
+    console.log('업데이트 가능:', info);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-available', info);
+    }
+  });
+  
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('업데이트 없음:', info);
+  });
+  
+  autoUpdater.on('download-progress', (progressObj) => {
+    let logMessage = `다운로드 속도: ${progressObj.bytesPerSecond}`;
+    logMessage = `${logMessage} - 다운로드: ${progressObj.percent}%`;
+    logMessage = `${logMessage} (${progressObj.transferred}/${progressObj.total})`;
+    console.log(logMessage);
+    if (mainWindow) {
+      mainWindow.webContents.send('download-progress', progressObj);
+    }
+  });
+  
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('업데이트 다운로드 완료:', info);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-downloaded', info);
+      // 사용자에게 업데이트 설치 확인 다이얼로그 표시
+      dialog.showMessageBox({
+        type: 'info',
+        title: '업데이트 준비 완료',
+        message: '새 버전이 다운로드되었습니다. 지금 설치하시겠습니까?',
+        buttons: ['예', '아니오']
+      }).then((buttonIndex) => {
+        if (buttonIndex.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+  
+  autoUpdater.on('error', (err) => {
+    console.error('자동 업데이트 오류:', err);
+  });
+
+  // 5초 후 업데이트 확인 시작
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+  }, 5000);
 });
 
 app.on("window-all-closed", () => {
@@ -433,3 +498,80 @@ ipcMain.handle('open-folder', async (_, folderPath) => {
     };
   }
 });
+
+
+function setupAutoUpdater() {
+  if (process.env.NODE_ENV === 'development') {
+    // 개발 환경에서는 업데이트 비활성화
+    return;
+  }
+
+  // 로그 설정
+  autoUpdater.logger = console;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // 업데이트 이벤트 리스너
+  autoUpdater.on('checking-for-update', () => {
+    console.log('업데이트 확인 중...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('업데이트 가능:', info);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-available', info);
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('업데이트 없음:', info);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let logMessage = `다운로드 속도: ${progressObj.bytesPerSecond}`;
+    logMessage = `${logMessage} - 다운로드: ${Math.round(progressObj.percent)}%`;
+    logMessage = `${logMessage} (${progressObj.transferred}/${progressObj.total})`;
+    console.log(logMessage);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('download-progress', progressObj);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('업데이트 다운로드 완료:', info);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-downloaded', info);
+      
+      // 사용자에게 업데이트 설치 확인 다이얼로그 표시
+      dialog.showMessageBox({
+        type: 'info',
+        title: '업데이트 준비 완료',
+        message: `새 버전 ${info.version}이(가) 다운로드되었습니다. 지금 재시작하여 업데이트를 설치하시겠습니까?`,
+        buttons: ['예', '아니오']
+      }).then((buttonIndex) => {
+        if (buttonIndex.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('자동 업데이트 오류:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', err);
+    }
+  });
+
+  // 업데이트 확인 시작 (시작 시 그리고 매 2시간마다)
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+    
+    // 정기적인 업데이트 확인 (2시간마다)
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 2 * 60 * 60 * 1000);
+  }, 10000); // 앱 시작 10초 후 첫 검사
+}

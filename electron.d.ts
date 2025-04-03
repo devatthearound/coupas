@@ -42,6 +42,8 @@ declare global {
       }
       readFileAsDataUrl: (filePath: string) => Promise<string>;
       openFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
+      on: (channel: string, callback: (...args: any[]) => void) => void;
+      removeAllListeners: (channel: string) => void;
     }
   }
 }
