@@ -45,12 +45,6 @@ function ProductCard({ product,
           <p className="text-lg font-bold text-[#514FE4] dark:text-[#6C63FF]">
             {product.productPrice.toLocaleString()}원
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {product.reviewCount}개의 리뷰
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {product.starRating}점
-          </p>
         </div>
       </div>
     );

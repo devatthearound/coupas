@@ -3,7 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { homedir } from 'os';
-import { app } from 'electron';
+import electron from 'electron';
+const { app } = electron;
 
 
 export class ImageProcessor {
@@ -18,6 +19,45 @@ export class ImageProcessor {
     SemiBold: 'Pretendard-SemiBold.otf',
     Thin: 'Pretendard-Thin.otf'
   };
+
+  // 배경 이미지 경로를 가져오는 메서드로 변경
+  private static getBackgroundImagePath() {
+    const isDev = process.env.NODE_ENV === 'development';
+    console.log('현재 환경:', isDev ? '개발' : '프로덕션');
+
+    // import.meta.url 대신 __dirname 사용
+    const possiblePaths = [
+      // 개발 환경 경로
+      path.join(process.cwd(), 'electron', 'assets', 'background_layout_1.png'),
+      // 빌드된 경로
+      path.join(__dirname, 'assets', 'background_layout_1.png'),
+      // resources 폴더 경로
+      path.join(process.resourcesPath || '', 'assets', 'background_layout_1.png')
+    ];
+
+    console.log('=== 배경 이미지 경로 검색 시작 ===');
+    console.log('현재 작업 디렉토리:', process.cwd());
+    console.log('__dirname:', __dirname);
+    
+    for (const p of possiblePaths) {
+      console.log(`검사 중: ${p}`);
+      try {
+        if (fs.existsSync(p)) {
+          console.log(`✅ 배경 이미지 찾음: ${p}`);
+          return p;
+        }
+      } catch (error) {
+        console.log(`❌ 경로 접근 오류: ${p}`, error);
+      }
+      console.log(`❌ 파일 없음: ${p}`);
+    }
+
+    throw new Error(
+      '배경 이미지를 찾을 수 없습니다.\n' +
+      '시도한 경로들:\n' +
+      possiblePaths.map(p => `- ${p}`).join('\n')
+    );
+  }
 
   static getFontPath(weight: string) {
     const fontFileName = ImageProcessor.FONT_WEIGHTS[weight as keyof typeof ImageProcessor.FONT_WEIGHTS];
@@ -50,34 +90,30 @@ export class ImageProcessor {
   }
 
   static async addTextToImage(
-    backgroundPath: string,
     outputPath: string,
     productImgPath: string,
     videoTitle: string,
     productName: string,
     price: string,
-    isRocket: boolean
+    rank: number,
+    isRocket: boolean,
+    discountRate?: number,
+    rating?: number,
+    ratingCount?: number,
+    features?: string
   ) {
     try {
-      console.log('이미지 생성 시작:', {
-        backgroundPath,
-        outputPath,
-        productImgShort: productImgPath.substring(0, 50) + '...'
-      });
-      
-      // 배경 이미지 존재 확인
-      if (!fs.existsSync(backgroundPath)) {
-        throw new Error(`배경 이미지 파일을 찾을 수 없습니다: ${backgroundPath}`);
-      }
+      const backgroundTemplatePath = this.getBackgroundImagePath();
       
       // 출력 디렉토리 확인
       const outputDir = path.dirname(outputPath);
+
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
         console.log('출력 디렉토리 생성:', outputDir);
       }
       
-      const image = sharp(backgroundPath);
+      const image = sharp(backgroundTemplatePath);
       const metadata = await image.metadata();
       const width = metadata.width || 1920;
       const height = metadata.height || 1080;
@@ -85,27 +121,19 @@ export class ImageProcessor {
       // 상품 이미지 처리 (웹 URL 또는 로컬 파일)
       let productImgBuffer;
       
-      // 웹 URL인지 확인 (http 또는 https로 시작하는지)
-      if (productImgPath.startsWith('http://') || productImgPath.startsWith('https://')) {
-        try {
-          // 웹 이미지를 가져와서 버퍼로 변환
-          console.log('웹 이미지 다운로드 시도:', productImgPath);
-          const response = await fetch(productImgPath);
-          if (!response.ok) {
-            throw new Error(`Failed to fetch image: ${response.statusText}`);
-          }
-          productImgBuffer = Buffer.from(await response.arrayBuffer());
-          console.log('웹 이미지 다운로드 성공');
-        } catch (error: any) {
-          console.error('웹 이미지 다운로드 실패:', error);
-          throw new Error(`상품 이미지를 가져오는데 실패했습니다: ${error.message || '알 수 없는 오류'}`);
+      // 웹 이미지를 가져와서 버퍼로 변환
+
+      try {
+        console.log('웹 이미지 다운로드 시도:', productImgPath);
+        const response = await fetch(productImgPath);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
-      } else {
-        // 로컬 파일 경로인 경우
-        if (!fs.existsSync(productImgPath)) {
-          throw new Error(`상품 이미지 파일을 찾을 수 없습니다: ${productImgPath}`);
-        }
-        productImgBuffer = fs.readFileSync(productImgPath);
+        productImgBuffer = Buffer.from(await response.arrayBuffer());
+        console.log('웹 이미지 다운로드 성공');
+      } catch (error: any) {
+        console.error('웹 이미지 다운로드 실패:', error);
+        throw new Error(`상품 이미지를 가져오는데 실패했습니다: ${error.message || '알 수 없는 오류'}`);
       }
 
       // 상품 이미지 리사이즈
@@ -118,9 +146,14 @@ export class ImageProcessor {
 
       // 기본 위치 설정
       const defaultPositions = {
-        title: { x: 0.03, y: 0.165, fontSize: 60 },
-        name: { x: 0.03, y: 0.5, fontSize: 100 },
-        price: { x: 0.03, y: 0.85, fontSize: 70 }
+        rank: { x: 0.34, y: 0.315, fontSize: 83, color: '#FFFFFF', weight: '900', letterSpacing: -0.3 },
+        title: { startX: 0.04, endX: 0.32, y: 0.165, fontSize: 47, color: '#091E42', weight: '900', letterSpacing: -0.3 },
+        name: { x: 0.04, y: 0.5, fontSize: 83, color: '#091E42', weight: '900', letterSpacing: -0.3 },
+        price: { x: 0.04, y: 0.89, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
+        rating: { x: 0.37, y: 0.89, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
+        features: { x: 0.37,  y: 0.94, fontSize: 36, color: '#091E42', weight: '700', letterSpacing: -0.3 },
+        isNextDayDelivery : { x: 0.79, y: 0.89, fontSize: 47, color: '#FF8B00', weight: '900', letterSpacing: -0.3 },
+        isRocket: { x: 0.87, y: 0.96, fontSize: 47, color: '#FF8B00', weight: '900', letterSpacing: -0.3 }
       };
 
       // 한국어에 더 적합한 문자 단위 텍스트 처리
@@ -180,18 +213,124 @@ export class ImageProcessor {
       const nameBaseY = height * defaultPositions.name.y - ((nameLines.length - 1) * fontSize * 0.7); // 여러 줄일 때 시작 Y 위치 조정
       
       nameLines.forEach((line, index) => {
-        const yPosition = nameBaseY + (index * fontSize * 1.2); // 줄 간격 설정
-        nameTextSvg += `<text x="${width * defaultPositions.name.x}" y="${yPosition}" 
-          font-family="Pretendard" font-size="${fontSize}" font-weight="900">${line}</text>`;
+        const yPosition = nameBaseY + (index * fontSize * 1.2);
+        nameTextSvg += `<text 
+          x="${width * defaultPositions.name.x}" 
+          y="${yPosition}" 
+          fill="${defaultPositions.name.color}"
+          font-weight="${defaultPositions.name.weight}"
+          font-size="${fontSize}"
+          style="letter-spacing: ${defaultPositions.name.letterSpacing}px">${line}</text>`;
       });
+
+      const generateStarRating = (rating: number, x: number, y: number, starSize: number = 60) => {
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.5;
+        const totalStars = 5;
+        let starsHtml = '';
+        
+        for (let i = 0; i < totalStars; i++) {
+          const starX = x + (i * (starSize - 20));  // 간격을 40에서 20으로 수정
+          if (i < fullStars) {
+            // 채워진 별
+            starsHtml += `<path transform="translate(${starX},${y}) scale(0.06)" fill="#FFA726" d="M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0z"/>`;
+          } else if (i === fullStars && hasHalfStar) {
+            // 반쪽 별
+            starsHtml += `<path transform="translate(${starX},${y}) scale(0.06)" fill="#FFA726" d="M288 439.6V17.8c-11.7-23.6-45.6-23.9-57.4 0L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6z"/>`;
+            starsHtml += `<path transform="translate(${starX},${y}) scale(0.06)" fill="#E0E0E0" d="M288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0"/>`;
+          } else {
+            // 빈 별
+            starsHtml += `<path transform="translate(${starX},${y}) scale(0.06)" fill="#E0E0E0" d="M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8c-11.7-23.6-45.6-23.9-57.4 0z"/>`;
+          }
+        }
+        return starsHtml;
+      };
+
 
       const svgText = `
         <svg width="${width}" height="${height}">
-          <text x="${width * defaultPositions.title.x}" y="${height * defaultPositions.title.y}" 
-                font-family="Pretendard" font-size="${defaultPositions.title.fontSize}" font-weight="900">${videoTitle}</text>
+          <defs>
+            <style>
+              text {
+                font-family: Pretendard;
+                letter-spacing: -0.3px;
+              }
+            </style>
+          </defs>
+          ${rank ? `<text 
+            x="${width * defaultPositions.rank.x}" 
+            y="${height * defaultPositions.rank.y}" 
+            font-size="${defaultPositions.rank.fontSize}" 
+            font-weight="${defaultPositions.rank.weight}"
+            fill="${defaultPositions.rank.color}" 
+            style="letter-spacing: ${defaultPositions.rank.letterSpacing}px">${rank}위</text>` : ''}
+          <text 
+            x="${width * (defaultPositions.title.startX + defaultPositions.title.endX) / 2}" 
+            y="${height * defaultPositions.title.y}" 
+            font-size="${defaultPositions.title.fontSize}" 
+            font-weight="${defaultPositions.title.weight}"
+            fill="${defaultPositions.title.color}"
+            text-anchor="middle"
+            style="letter-spacing: ${defaultPositions.title.letterSpacing}px">${videoTitle}</text>
           ${nameTextSvg}
-          <text x="${width * defaultPositions.price.x}" y="${height * defaultPositions.price.y}" 
-                font-family="Pretendard" font-size="${defaultPositions.price.fontSize}" font-weight="900">가격: ${price}원</text>
+          ${(discountRate && discountRate > 0) ? `<text 
+            x="${width * defaultPositions.price.x}" 
+            y="${height * defaultPositions.price.y}" 
+            fill="${defaultPositions.price.color}"
+            font-weight="${defaultPositions.price.weight}"
+            font-size="${defaultPositions.price.fontSize}"
+            style="letter-spacing: ${defaultPositions.price.letterSpacing}px">가격: ${price}원 (${discountRate}% 할인 중)</text>
+          ` : `<text 
+            x="${width * defaultPositions.price.x}" 
+            y="${height * defaultPositions.price.y}" 
+            fill="${defaultPositions.price.color}"
+            font-weight="${defaultPositions.price.weight}"
+            font-size="${defaultPositions.price.fontSize}"
+            style="letter-spacing: ${defaultPositions.price.letterSpacing}px">가격: ${price}원</text>
+          `}
+         ${rating ? `
+          <text 
+            x="${width * defaultPositions.rating.x}" 
+            y="${height * defaultPositions.rating.y}" 
+            fill="${defaultPositions.rating.color}"
+            font-weight="${defaultPositions.rating.weight}"
+            font-size="${defaultPositions.rating.fontSize}"
+            style="letter-spacing: ${defaultPositions.rating.letterSpacing}px">평점: </text>
+          ${generateStarRating(rating, 
+            width * defaultPositions.rating.x + 80,
+            height * defaultPositions.rating.y - 25
+          )}
+          <text 
+            x="${width * defaultPositions.rating.x + 280}"
+            y="${height * defaultPositions.rating.y}" 
+            fill="${defaultPositions.rating.color}"
+            font-weight="${defaultPositions.rating.weight}"
+            font-size="${defaultPositions.rating.fontSize}"
+            style="letter-spacing: ${defaultPositions.rating.letterSpacing}px">(${ratingCount}개 상품평)</text>
+        ` : ''}
+          ${features ? `<text 
+            x="${width * defaultPositions.features.x}" 
+            y="${height * defaultPositions.features.y}" 
+            fill="${defaultPositions.features.color}"
+            font-weight="${defaultPositions.features.weight}"
+            font-size="${defaultPositions.features.fontSize}"
+            style="letter-spacing: ${defaultPositions.features.letterSpacing}px">특징: ${features}</text>
+          ` : ''}
+         ${isRocket ?`<text 
+          x="${width * defaultPositions.isNextDayDelivery.x}" 
+          y="${height * defaultPositions.isNextDayDelivery.y}" 
+          fill="${defaultPositions.isNextDayDelivery.color}"
+          font-weight="${defaultPositions.isNextDayDelivery.weight}"
+          font-size="${defaultPositions.isNextDayDelivery.fontSize}"
+          style="letter-spacing: ${defaultPositions.isNextDayDelivery.letterSpacing}px">오늘사면 내일도착</text>
+          <text 
+          x="${width * defaultPositions.isRocket.x}" 
+          y="${height * defaultPositions.isRocket.y}" 
+          fill="${defaultPositions.isRocket.color}"
+          font-weight="${defaultPositions.isRocket.weight}"
+          font-size="${defaultPositions.isRocket.fontSize}"
+          style="letter-spacing: ${defaultPositions.isRocket.letterSpacing}px">로켓 배송</text>
+          ` : ''}
         </svg>`;
 
       // 이미지 합성
@@ -220,21 +359,25 @@ export class ImageProcessor {
    * 여러 제품 이미지를 생성하고 로컬 저장소에 저장합니다.
    * @param videoTitle 비디오 제목
    * @param productsList 제품 정보 목록
-   * @param backgroundTemplatePath 배경 이미지 템플릿 경로
    * @param outputDir 결과 이미지를 저장할 디렉토리 경로
    * @returns 생성된 이미지 파일 경로 배열
    */
   static async createMultipleProductImages(
     videoTitle: string,
-    productsList : {
+    productsList: {
       productName: string;
-      productPrice: string;
       productImage: string;
+      productPrice: number;
+      rating?: number;
+      ratingCount?: number;
+      features?: string;
       isRocket: boolean;
-      isCoupon: boolean;
+      isFreeShipping: boolean;
       shortUrl: string;
+      rank: number;
+      discountRate?: number;
     }[],
-    backgroundTemplatePath: string,
+    // backgroundTemplatePath: string,
     outputDir = path.join(process.cwd(), 'output_images')
   ) {
     const outputPaths = [];
@@ -259,13 +402,17 @@ export class ImageProcessor {
         const tempOutputPath = path.join(tempDir, `product_image_${i + 1}_temp.png`);
 
         await this.addTextToImage(
-          backgroundTemplatePath,
           tempOutputPath,
           product.productImage,
           videoTitle,
           product.productName,
-          product.productPrice,
-          product.isRocket || false
+          product.productPrice.toLocaleString(),
+          product.rank,
+          product.isRocket || false,
+          product.discountRate || 0,
+          product.rating || 0,
+          product.ratingCount || 0,
+          product.features || ''
         );
 
         // 임시 파일을 최종 출력 위치로 이동
@@ -312,5 +459,84 @@ export class ImageProcessor {
 
   static async generateProductImage(backgroundPath: string, outputPath: string, product: any) {
     // Implementation of generateProductImage method
+  }
+
+  static async testImageGeneration() {
+    try {
+      const testData = {
+        videoTitle: "테스트 비디오 제목",
+        productInfo: {
+          productName: "테스트 상품명 입니다 길게 써볼게요 과연 어떻게 될까요?",
+          productImage: "https://thumbnail7.coupangcdn.com/thumbnails/remote/492x492ex/image/retail/images/1366566669湲몃떎.jpg", // 실제 이미지 URL로 변경
+          productPrice: "50,000",
+          isRocket: true,
+          isFreeShipping: true,
+          rank: 1
+        },
+        outputPath: path.join(process.cwd(), 'test_output.png')
+      };
+
+      console.log('테스트 시작...');
+      console.log('출력 경로:', testData.outputPath);
+
+      await this.addTextToImage(
+        testData.outputPath,
+        testData.productInfo.productImage,
+        testData.videoTitle,
+        testData.productInfo.productName,
+        testData.productInfo.productPrice,
+        testData.productInfo.rank,
+        testData.productInfo.isRocket,
+      );
+
+      console.log('이미지 생성 완료!');
+      console.log('생성된 이미지 경로:', testData.outputPath);
+      
+      return testData.outputPath;
+    } catch (error) {
+      console.error('테스트 중 오류 발생:', error);
+      throw error;
+    }
+  }
+
+  static async testCreateMultipleProductImages() {
+    try {
+      const testData = {
+        videoTitle: "인기 주방용품 TOP 3",
+        productsList: [
+          {
+            productName: "스테인레스 프라이팬",
+            productImage: "https://ads-partners.coupang.com/image1/aZjOIDnZQLX1dMhZaWJ6FQOGHt73qcMABFezhdDsDk-NjA8IssLulpDvc_m-BXkSAxIJ7T1_THeCV4Ic38i8ZLSzZht3gVL5Ztm80AqDAXkb4KZwVsrKjQUveTZtnihP5p9TUIivA0zqdeGOaN57ArxSZrQHKSd4jYsO5JvS7FRHn0B2-5M_oWF3lXy1mC9QI1Qd8lfYCAQBIKDDHmb9qUasLalk_WY4BhV26xZI7Zg7RCftIsaKxQ9k1ZcLagL3rNZbXhQtALGUuHjvWEOL3TfofrXQfOOALWkt9-qgskO0HapdtUfxxVd2kQ==",
+            productPrice: 29900,
+            rating: 4.5,
+            ratingCount: 1200,
+            features: "내구성이 좋은 스테인레스 소재",
+            isRocket: true,
+            isFreeShipping: true,
+            shortUrl: "http://example.com/1",
+            rank: 1,
+            discountRate : 48
+          }
+        ],
+        outputDir: path.join(process.cwd(), 'test_multiple_images')
+      };
+
+      console.log('다중 이미지 생성 테스트 시작...');
+      console.log('출력 디렉토리:', testData.outputDir);
+
+      const outputPaths = await this.createMultipleProductImages(
+        testData.videoTitle,
+        testData.productsList,
+        testData.outputDir
+      );
+
+      console.log('이미지 생성 완료!');
+      console.log('생성된 이미지 경로들:', outputPaths);
+      
+      return outputPaths;
+    } catch (error) {
+      console.error('테스트 중 오류 발생:', error);
+      throw error;
+    }
   }
 }

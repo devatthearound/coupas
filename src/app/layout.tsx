@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "./contexts/UserContext";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import Navbar from './components/Navbar';
 import { FormatModal, ApiModal, YoutubeModal } from './components/Modals';
 
@@ -32,6 +32,52 @@ export default function RootLayout({
   const [isApiModalOpen, setIsApiModalOpen] = useState(false);
   const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
   const [isYoutubeLoggedIn, setIsYoutubeLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Electron 환경에서만 실행
+    if (typeof window !== 'undefined' && window.electron) {
+      // 업데이트 가능 알림
+      const handleUpdateAvailable = (info: any) => {
+        toast(`새 버전(${info.version})이 있습니다. 다운로드 중...`, {
+          icon: 'ℹ️',
+          duration: 4000
+        });
+      };
+      
+      // 다운로드 진행 상황
+      const handleDownloadProgress = (progress: any) => {
+        console.log(`업데이트 다운로드 중: ${Math.round(progress.percent)}%`);
+      };
+      
+      // 다운로드 완료
+      const handleUpdateDownloaded = (info: any) => {
+        toast.success(`새 버전(${info.version})이 준비되었습니다. 재시작시 적용됩니다.`);
+      };
+      
+      // 오류 처리
+      const handleUpdateError = (err: any) => {
+        toast.error(`업데이트 오류: ${err.message}`);
+      };
+      
+      // 이벤트 리스너 추가
+      window.electron.on('update-available', handleUpdateAvailable);
+      window.electron.on('download-progress', handleDownloadProgress);
+      window.electron.on('update-downloaded', handleUpdateDownloaded);
+      window.electron.on('update-error', handleUpdateError);
+      
+      // 컴포넌트 언마운트 시 이벤트 리스너 정리
+      return () => {
+        if (window.electron) {
+          window.electron.removeAllListeners('update-available');
+          window.electron.removeAllListeners('download-progress');
+          window.electron.removeAllListeners('update-downloaded');
+          window.electron.removeAllListeners('update-error');
+        }
+      };
+    }
+  }, []);
+  
+  
 
   return (
     <html lang="en">

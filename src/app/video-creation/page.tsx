@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { ProductData } from '../types';
+import { ProductData } from '@/services/coupang/types';
 import { VideoPreviewModal } from '../components/VideoPreviewModal';
 import {  DropResult } from 'react-beautiful-dnd';
 import { LockClosedIcon } from '@heroicons/react/24/solid';
 import { isElectron } from '@/utils/environment';
+import Image from 'next/image';
+import ProductEditor from '../components/ProductEditor';
 
 export default function VideoCreationPage() {
   return (
@@ -17,12 +19,18 @@ export default function VideoCreationPage() {
   );
 }
 
+type ExtendedProductData = ProductData & {
+  rating: number;
+  ratingCount: number;
+  features: string;
+  isFreeShipping: boolean;
+  discountRate: number;
+}
+
 function VideoCreationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedProducts, setSelectedProducts] = useState<ProductData[]>([]);
-  // 상품정보 JSON으로 사용자 입력 받기
-  const [productInfo, setProductInfo] = useState<string>('');
+  const [selectedProducts, setSelectedProducts] = useState<ExtendedProductData[]>([]);
   // 비디오 제목
   const [videoTitle, setVideoTitle] = useState('');
   // 비디오 설명
@@ -62,6 +70,15 @@ function VideoCreationContent() {
     tags: string[];
     thumbnailPath: string;
   } | null>(null);
+
+  // 로고 이미지 상태 추가
+  const [logoPath, setLogoPath] = useState<string>('');
+
+  // 이미지 표시 시간 상태 추가
+  const [imageDisplayDuration, setImageDisplayDuration] = useState<number>(3);
+
+  // 저장 경로 상태 추가
+  const [outputDirectory, setOutputDirectory] = useState<string>('');
 
   const skinOptions = [
     { label: '기본 스킨', value: 'default', description: '깔끔한 기본 디자인' },
@@ -103,10 +120,6 @@ function VideoCreationContent() {
     }
   };
   
-  const handleSkinChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSkin(e.target.value);
-  };
-
 
   useEffect(() => {
     const isElectronEnv = isElectron();
@@ -214,12 +227,33 @@ function VideoCreationContent() {
     }
   };
 
+  // 로고 이미지 선택 핸들러 추가
+  const handleLogoChange = async () => {
+    const filePath = await window.electron.selectImageFile();
+    if (filePath) {
+      console.log('선택된 로고 이미지 경로:', filePath);
+      setLogoPath(filePath);
+    }
+  };
+
+  // 저장 경로 선택 핸들러 추가
+  const handleSelectOutputDirectory = async () => {
+    try {
+      const directoryPath = await window.electron.selectDirectory();
+      if (directoryPath) {
+        setOutputDirectory(directoryPath);
+      }
+    } catch (error) {
+      console.error('저장 경로 선택 중 오류:', error);
+    }
+  };
+
   const generateVideo = async () => {
     if(!videoTitle) {
-      toast.error('영상 제목을 입력해주세요.');
+      toast.error('키워드를 입력해주세요.');
       return;
     }
-    if(!productInfo) {
+    if(selectedProducts.length === 0) {
       toast.error('상품 정보를 입력해주세요.');
       return;
     }
@@ -235,31 +269,24 @@ function VideoCreationContent() {
       toast.error('배경 음악을 선택해주세요.');
       return;
     }
+    if(!outputDirectory) {
+      toast.error('저장 경로를 선택해주세요.');
+      return;
+    }
 
     try {
       setIsProcessing(true);
       setProgress('비디오와 이미지를 합치는 중...');
       
-      // 파일 경로 로그 추가
+      // 파일 경로 로그에 로고 추가
       console.log('비디오 생성 시작: ', {
         videoTitle,
         introVideo,
         outroVideo,
         backgroundMusic,
-        backgroundTemplatePath
+        backgroundTemplatePath,
+        logoPath
       });
-      
-      // 상품 정보 파싱 시도
-      let parsedProductInfo;
-      try {
-        parsedProductInfo = JSON.parse(productInfo);
-        console.log('파싱된 상품 정보:', parsedProductInfo);
-      } catch (parseError) {
-        console.error('상품 정보 파싱 오류:', parseError);
-        toast.error('상품 정보 JSON 형식이 올바르지 않습니다.');
-        setIsProcessing(false);
-        return;
-      }
       
       const result = await window.electron.combineVideosAndImages(
         videoTitle,
@@ -267,7 +294,10 @@ function VideoCreationContent() {
         outroVideo,
         backgroundMusic,
         backgroundTemplatePath,
-        parsedProductInfo
+        selectedProducts,
+        logoPath,
+        outputDirectory,
+        imageDisplayDuration
       );
 
       console.log('비디오 합성 결과:', result);
@@ -279,6 +309,11 @@ function VideoCreationContent() {
           setGeneratedVideoUrl(result.outputPath);
         }
         toast.success('비디오 합성이 완료되었습니다!');
+        
+        // 폴더 열기 확인 팝업
+        if (confirm('영상 생성이 완료되었습니다. 해당 폴더를 여시겠습니까?')) {
+          await window.electron.openFolder(outputDirectory);
+        }
       } else {
         setProgress('');
         console.error('합성 실패 상세 오류:', result.error);
@@ -302,10 +337,9 @@ function VideoCreationContent() {
   };
 
   const generateComment = useCallback((): string => {
-    if (!productInfo) return '';
+    if (selectedProducts.length === 0) return '';
 
     try {
-      const products = JSON.parse(productInfo);
       const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
       
       const templates = {
@@ -324,7 +358,7 @@ function VideoCreationContent() {
           `\n상세정보 👉 ${product.shortUrl}\n`
       };
 
-      const productsText = products.map((product: any, index: number) => 
+      const productsText = selectedProducts.map((product: any, index: number) => 
         templates[commentTemplate](product, index)
       ).join('\n');
 
@@ -332,10 +366,30 @@ function VideoCreationContent() {
 
       return header + productsText + footer;
     } catch (error) {
-      console.error('상품 정보 파싱 오류:', error);
+      console.error('상품 정보 처리 오류:', error);
       return '';
     }
-  }, [productInfo, commentTemplate]);
+  }, [selectedProducts, commentTemplate]);
+
+  // URL 파라미터에서 상품 정보 가져오기
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const productsParam = searchParams.get('products');
+    if (productsParam) {
+      try {
+        const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
+        setSelectedProducts(decodedProducts);
+      } catch (error) {
+        console.error('상품 정보 파싱 오류:', error);
+        toast.error('상품 정보를 불러오는데 실패했습니다.');
+      }
+    }
+  }, []);
+
+  // 상품 정보가 변경될 때 JSON 문자열 업데이트
+  const handleProductsChange =  (updatedProducts: ExtendedProductData[]) => {
+    setSelectedProducts(updatedProducts);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -469,7 +523,7 @@ function VideoCreationContent() {
           <div className="flex flex-col gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                영상 제목
+                키워드
               </label>
               <input 
                 type="text" 
@@ -481,12 +535,33 @@ function VideoCreationContent() {
                   focus:border-[#514FE4] dark:focus:border-[#6C63FF]
                   focus:ring-1 focus:ring-[#514FE4]/50 dark:focus:ring-[#6C63FF]/50
                   transition-colors"
-                placeholder="영상 제목을 입력하세요"
+                placeholder="키워드를 입력하세요"
               />
             </div>
+            {/* 로고 이미지 선택 버튼 추가 */}
+            {/* <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                로고 이미지
+              </label>
+              <button
+                onClick={handleLogoChange}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 rounded text-left transition-colors"
+              >
+                <span className="inline-block mr-4 py-2 px-4
+                  rounded-full border-0 
+                  text-sm font-semibold
+                  bg-[#514FE4]/10 text-[#514FE4]
+                  dark:bg-[#6C63FF]/10 dark:text-[#6C63FF]
+                  hover:bg-[#514FE4]/20">
+                  파일 선택
+                </span>
+                {logoPath ? logoPath.split('/').pop() : '선택된 파일 없음'}
+              </button>
+            </div> */}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                인트로 영상 선택
+                인트로 영상
               </label>
               <button
                 onClick={handleIntroVideoChange}
@@ -505,7 +580,7 @@ function VideoCreationContent() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                아웃트로 영상 선택
+                아웃트로 영상
               </label>
               <button
                 onClick={handleOutroVideoChange}
@@ -522,7 +597,7 @@ function VideoCreationContent() {
                 {outroVideo ? outroVideo.split('/').pop() : '선택된 파일 없음'}
               </button>
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 비디오 스킨 선택
               </label>
@@ -562,11 +637,11 @@ function VideoCreationContent() {
                   </label>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                배경 음악 선택
+                배경 음악
               </label>
               <button
                 onClick={handleSelectAudio}
@@ -583,9 +658,9 @@ function VideoCreationContent() {
                 {backgroundMusic ? backgroundMusic.split('/').pop() : '선택된 파일 없음'}
               </button>
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                배경 템플릿 이미지 선택
+                배경 템플릿 이미지
               </label>
               <button
                 onClick={handleBackgroundTemplateChange}
@@ -601,42 +676,74 @@ function VideoCreationContent() {
                 </span>
                 {backgroundTemplatePath ? backgroundTemplatePath.split('/').pop() : '선택된 파일 없음'}
               </button>
-            </div>
+            </div> */}
 
-            {/* 상품 정보 JSON 입력 */}
+            {/* 이미지 표시 시간 설정 추가 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                상품 정보 JSON
+                상품 이미지 표시 시간 (초)
               </label>
-              <textarea
-                value={productInfo}
-                onChange={(e) => setProductInfo(e.target.value)}
-                className="block w-full h-40 text-sm text-gray-500 dark:text-gray-400
-                  border border-gray-200 dark:border-gray-700 rounded-md
-                  py-2 px-3 focus:outline-none
-                  focus:border-[#514FE4] dark:focus:border-[#6C63FF]
-                  transition-colors"
-                placeholder={`올바른 JSON 형식으로 상품 정보를 입력해주세요:
-[
-  {
-    "productName": "상품명",
-    "productPrice": 10000,
-    "productImage": "https://example.com/image.jpg",
-    "isRocket": true,
-    "isFreeShipping": false,
-    "shortUrl": "https://example.com"
-  }
-]`}
-              />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                * 쉼표(,)와 따옴표(`&quot;`)를 정확히 입력해주세요. 마지막 항목 뒤에는 쉼표를 넣지 마세요.
-              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  value={imageDisplayDuration}
+                  onChange={(e) => setImageDisplayDuration(Number(e.target.value))}
+                  className="flex-1"
+                />
+                <span className="text-sm text-gray-500 min-w-[3ch]">
+                  {imageDisplayDuration}초
+                </span>
+              </div>
+            </div>
+
+            {/* 저장 경로 선택 버튼 추가 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                저장 경로
+              </label>
+              <button
+                onClick={handleSelectOutputDirectory}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 rounded text-left transition-colors"
+              >
+                <span className="inline-block mr-4 py-2 px-4
+                  rounded-full border-0
+                  text-sm font-semibold
+                  bg-[#514FE4]/10 text-[#514FE4]
+                  dark:bg-[#6C63FF]/10 dark:text-[#6C63FF]
+                  hover:bg-[#514FE4]/20">
+                  폴더 선택
+                </span>
+                {outputDirectory ? outputDirectory : '선택된 폴더 없음'}
+              </button>
+            </div>
+
+            {/* 상품 정보 수정 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                상품 정보 수정
+              </label>
+              <div className="space-y-4">
+                {selectedProducts.map((product, index) => (
+                  <ProductEditor
+                    key={product.productId}
+                    products={product}
+                    onChange={(updatedProduct) => {
+                      const newProducts = [...selectedProducts];
+                      newProducts[index] = updatedProduct;
+                      setSelectedProducts(newProducts);
+                    }}
+                  />
+                ))}
+              </div>
             </div>
             <button
               onClick={generateVideo}
               className="flex items-center justify-center gap-1 px-4 py-2 bg-[#514FE4] text-white rounded-lg hover:bg-[#4140B3] 
                 dark:bg-[#6C63FF] dark:hover:bg-[#5B54E8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!videoTitle || !productInfo || !introVideo || !outroVideo || !backgroundMusic}
+              disabled={!videoTitle || selectedProducts.length === 0 || !introVideo || !outroVideo || !backgroundMusic || !outputDirectory}
             >
                 영상 생성
             </button>
