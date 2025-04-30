@@ -19,6 +19,9 @@ const electron = {
     // 이미지 파일 선택 다이얼로그
     selectImageFile: () => ipcRenderer.invoke('select-image-file'),
 
+    // 디렉토리 선택 다이얼로그
+    selectDirectory: () => ipcRenderer.invoke('select-directory'),
+
     // combineVideosAndImages
     combineVideosAndImages: (
       videoTitle: string,
@@ -26,8 +29,12 @@ const electron = {
       outroVideo: string,
       backgroundMusic: string,
       backgroundTemplatePath: string,
-      productInfo: any[]
-    ) => ipcRenderer.invoke('combine-videos-and-images', videoTitle, introVideo, outroVideo, backgroundMusic, backgroundTemplatePath, productInfo),
+      productInfo: any[],
+      logoPath: string,
+      outputDirectory: string,
+      imageDisplayDuration: number
+    ) => ipcRenderer.invoke('combine-videos-and-images', videoTitle, introVideo, outroVideo, backgroundMusic, backgroundTemplatePath, 
+      productInfo, logoPath, outputDirectory, imageDisplayDuration),
   
     // 비디오 트리밍
     trimVideo: (inputPath: string, outputPath: string, startTime: number, duration: number) => 
@@ -85,6 +92,26 @@ const electron = {
         throw error;
       }
     },
+
+    // 폴더 열기
+    openFolder: (folderPath: string) => ipcRenderer.invoke('open-folder', folderPath),
+
+    on: (channel: string, callback: (...args: any[]) => void) => {
+      const validChannels = [
+          'update-available',
+          'download-progress',
+          'update-downloaded',
+          'update-error',
+          'console-message'
+      ];
+      if (validChannels.includes(channel)) {
+          ipcRenderer.on(channel, (_, ...args) => callback(...args));
+      }
+    },
+    
+    removeAllListeners: (channel: string) => {
+        ipcRenderer.removeAllListeners(channel);
+    }
 }
 
 contextBridge.exposeInMainWorld('electron', electron)

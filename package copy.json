@@ -17,9 +17,9 @@
     "next:lint": "next lint",
     "format": "dprint fmt",
     "postinstall": "electron-builder install-app-deps",
-    "electron:dist": "electron-builder",
+    "electron:dist": "electron-builder -mw --publish never",
     "electron:build": "tsup",
-    "build": "run-s electron:build",
+    "build": "run-s next:build electron:build",
     "dist": "run-s build electron:dist",
     "publish": "run-s build electron:publish",
     "electron:publish": "electron-builder --publish always",
@@ -142,66 +142,33 @@
       ],
       "artifactName": "coupas-${version}-${arch}.${ext}",
       "publisherName": "디어라운드 (The Around)",
-      "verifyUpdateCodeSignature": false,
-      "icon": "electron/assets/icon.ico",
-      "certificateSubjectName": "디어라운드 (The Around)"
+      "verifyUpdateCodeSignature": false
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": true,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false,
-      "installerIcon": "electron/assets/icon.ico",
-      "uninstallerIcon": "electron/assets/icon.ico",
-      "installerHeaderIcon": "electron/assets/icon.ico",
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "쿠파스",
-      "deleteAppDataOnUninstall": false,
-      "displayLanguageSelector": false,
-      "unicode": true,
-      "runAfterFinish": true,
-      "menuCategory": "디어라운드",
-      "license": "LICENSE.txt",
-      "artifactName": "쿠파스-설치프로그램-${version}.${ext}",
-      "include": "installer.nsh"
+      "createStartMenuShortcut": true
     },
+    "afterSign": "scripts/notarize.js",
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
-      "entitlements": "entitlements.mac.plist",
-      "icon": "electron/assets/icon.icns",
       "category": "public.app-category.productivity",
-     
+      "hardenedRuntime": true,
+      "gatekeeperAssess": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
       "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39",
       "notarize": {
         "teamId": "AJNAL73TT5"
       }
     },
-    "dmg": {
-      "background": "electron/assets/dmg-background.png",
-      "icon": "electron/assets/icon.icns",
-      "iconSize": 100,
-      "window": {
-        "width": 540,
-        "height": 380
-      },
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
     "directories": {
-      "output": "releases",
-      "buildResources": "electron/assets"
+      "output": "releases"
     },
     "protocols": [
       {

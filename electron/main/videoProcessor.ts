@@ -148,15 +148,28 @@ export class EnhancedVideoProcessor {
     introVideo: string,
     outroVideo: string,
     backgroundMusic: string,
-    backgroundTemplatePath: string,
-    productInfo: any[]
+    // backgroundTemplatePath: string,
+    productInfo: {
+      productName: string;      // 상품명
+      productImage: string;     // 상품 이미지
+      productPrice: number;     // 가격
+      rating?: number;          // 평점 (별점) - 선택적
+      ratingCount?: number;     // 평점 갯수 - 선택적
+      features?: string;        // 특징 - 선택적
+      isRocket: boolean;        // 로켓배송 여부
+      isFreeShipping: boolean;  // 무료배송 여부
+      shortUrl: string;        // 상품 링크
+      rank: number;            // 순위
+    }[],
+    logoPath: string,
+    outputDirectory: string,
+    imageDisplayDuration: number
   ) {
-    const outputPath = path.join(homedir(), 'Documents', 'Coupas', 'tmp_video_processing', `${videoTitle}.mp4`);
+    const outputPath = path.join(outputDirectory, `${videoTitle}.mp4`);
     
     return new Promise(async (resolve, reject) => {
       try {
         const videoFormat = 'mp4';
-        const imageDisplayDuration = 3;
         const imageFps = 30;
 
         console.log('비디오 처리 시작...');
@@ -214,7 +227,7 @@ export class EnhancedVideoProcessor {
           productImagePaths = await ImageProcessor.createMultipleProductImages(
             videoTitle,
             productsList,
-            backgroundTemplatePath,
+            // backgroundTemplatePath,
             outputDir
           );
           console.log('생성된 제품 이미지 경로들:', productImagePaths);

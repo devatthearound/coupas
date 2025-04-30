@@ -8,6 +8,7 @@ import { YouTubeUploader } from './quickstart.js';
 import fs from 'fs';
 import path from 'path';
 import { readFile } from 'fs/promises';
+import { autoUpdater } from 'electron-updater';
 
 // 기존 console 메서드 캐싱
 const originalConsole = {
@@ -94,6 +95,85 @@ function setupLogMonitoring(mainWindow: BrowserWindow) {
       });
     }
   });
+}
+
+/**
+ * 자동 업데이트 설정
+ */
+function setupAutoUpdater() {
+  if (process.env.NODE_ENV === 'development') {
+    // 개발 환경에서는 업데이트 비활성화
+    return;
+  }
+
+  // 로그 설정
+  autoUpdater.logger = console;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // 업데이트 이벤트 리스너
+  autoUpdater.on('checking-for-update', () => {
+    console.log('업데이트 확인 중...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('업데이트 가능:', info);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-available', info);
+    }
+  });
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('업데이트 없음:', info);
+  });
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let logMessage = `다운로드 속도: ${progressObj.bytesPerSecond}`;
+    logMessage = `${logMessage} - 다운로드: ${Math.round(progressObj.percent)}%`;
+    logMessage = `${logMessage} (${progressObj.transferred}/${progressObj.total})`;
+    console.log(logMessage);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('download-progress', progressObj);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('업데이트 다운로드 완료:', info);
+    
+    if (mainWindow) {
+      mainWindow.webContents.send('update-downloaded', info);
+      
+      // 사용자에게 업데이트 설치 확인 다이얼로그 표시
+      dialog.showMessageBox({
+        type: 'info',
+        title: '업데이트 준비 완료',
+        message: `새 버전 ${info.version}이(가) 다운로드되었습니다. 지금 재시작하여 업데이트를 설치하시겠습니까?`,
+        buttons: ['예', '아니오']
+      }).then((buttonIndex) => {
+        if (buttonIndex.response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('자동 업데이트 오류:', err);
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', err);
+    }
+  });
+
+  // 업데이트 확인 시작 (시작 시 그리고 매 2시간마다)
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+    
+    // 정기적인 업데이트 확인 (2시간마다)
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 2 * 60 * 60 * 1000);
+  }, 10000); // 앱 시작 10초 후 첫 검사
 }
 
 const createWindow = async () => {
@@ -192,8 +272,20 @@ app.whenReady().then(() => {
   app.on('open-url', (event, url) => {
     event.preventDefault();
     try {
-      const parsedUrl = new URL(url);
-      if (parsedUrl.protocol === 'coupas-auth:' && parsedUrl.pathname === '/login') {
+      console.log('원본 URL:', url);
+      // URL 정규화
+      const normalizedUrl = url.replace('coupas-auth://', 'coupas-auth:///');
+      const parsedUrl = new URL(normalizedUrl);
+      
+      console.log('파싱된 URL 정보:', {
+        protocol: parsedUrl.protocol,
+        pathname: parsedUrl.pathname,
+        searchParams: Object.fromEntries(parsedUrl.searchParams)
+      });
+  
+      // pathname이 /login 또는 login인 경우를 모두 처리
+      if (parsedUrl.protocol === 'coupas-auth:' && 
+          (parsedUrl.pathname === '/login' || parsedUrl.pathname === 'login')) {
         const accessToken = parsedUrl.searchParams.get('coupas_access_token');
         const refreshToken = parsedUrl.searchParams.get('coupas_refresh_token');
         
@@ -206,11 +298,16 @@ app.whenReady().then(() => {
         }
       }
     } catch (error) {
-      console.error('URL 처리 중 오류:', error);
+      console.error('URL 파싱 중 오류:', error);
     }
   });
+  
 
-  createWindow();
+  createWindow().then(() => {
+    // 자동 업데이트 설정
+    setupAutoUpdater();
+  });
+
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -241,6 +338,13 @@ ipcMain.handle('select-image-files', async () => {
   })
   return result.filePaths
 })
+// 디렉토리 선택 다이얼로그
+ipcMain.handle('select-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+  return result.filePaths[0];
+}); 
 
 ipcMain.handle('select-image-file', async () => {
   const result = await dialog.showOpenDialog({
@@ -265,16 +369,22 @@ ipcMain.handle('combine-videos-and-images', async (
   outroVideo,
   backgroundMusic,
   backgroundTemplatePath,
-  productInfo
+  productInfo,
+  logoPath,
+  outputDirectory,
+  imageDisplayDuration
 ) => {
   try {
     console.log('비디오 합성 요청 받음:', {
       videoTitle,
-      introVideo,
+      introVideo, 
       outroVideo,
       backgroundMusic,
       backgroundTemplatePath,
-      productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array'
+      productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array',
+      logoPath,
+      outputDirectory,
+      imageDisplayDuration
     });
     
     // 파일 존재 여부 확인
@@ -293,18 +403,21 @@ ipcMain.handle('combine-videos-and-images', async (
     checkFile(outroVideo, '아웃로 비디오');
     checkFile(backgroundMusic, '배경 음악');
     
-    // 배경 템플릿 이미지는 선택적일 수 있음
-    if (backgroundTemplatePath && !fs.existsSync(backgroundTemplatePath)) {
-      console.warn(`배경 템플릿 이미지를 찾을 수 없습니다: ${backgroundTemplatePath}`);
-    }
+    // // 배경 템플릿 이미지는 선택적일 수 있음
+    // if (backgroundTemplatePath && !fs.existsSync(backgroundTemplatePath)) {
+    //   console.warn(`배경 템플릿 이미지를 찾을 수 없습니다: ${backgroundTemplatePath}`);
+    // }
     
     const result = await EnhancedVideoProcessor.combineVideosAndImages(
       videoTitle,
       introVideo,
       outroVideo,
       backgroundMusic,
-      backgroundTemplatePath,
-      productInfo
+      // backgroundTemplatePath,
+      productInfo,
+      logoPath,
+      outputDirectory,
+      imageDisplayDuration
     )
     return result;
   } catch (error) {
@@ -374,3 +487,33 @@ if (!gotTheLock) {
     }
   });
 }
+
+// 폴더 열기 핸들러 추가
+ipcMain.handle('open-folder', async (_, folderPath) => {
+  try {
+    // 폴더가 존재하는지 확인
+    if (!fs.existsSync(folderPath)) {
+      throw new Error('폴더를 찾을 수 없습니다.');
+    }
+    
+    // 운영체제별로 적절한 방법으로 폴더 열기
+    if (process.platform === 'darwin') {
+      // macOS
+      await shell.openPath(folderPath);
+    } else if (process.platform === 'win32') {
+      // Windows
+      await shell.openPath(folderPath);
+    } else {
+      // Linux 등 기타 운영체제
+      await shell.openPath(folderPath);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error('폴더 열기 실패:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '폴더를 열 수 없습니다.' 
+    };
+  }
+});
