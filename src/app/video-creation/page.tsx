@@ -155,12 +155,15 @@ function VideoCreationContent() {
 
       const response = await fetch('/api/google-auth/token');
       
+      console.log('response', response);
       if (!response.ok) {
         toast.error('유튜브 로그인이 필요합니다.');
         setIsAuthenticating(true);
         setPendingUploadData(uploadData);
-        const redirect_to = encodeURIComponent('coupas-auth://google-auth/success');
-        window.electron.openExternal(`https://growsome.kr/coupas/google-auth?redirect_to=${redirect_to}`);
+        const electronPath = encodeURIComponent(`coupas-auth://google-auth/success`);
+        const redirectUrl = `https://growsome.kr/google-auth?redirect_to=${electronPath}`;
+  
+        window.electron.openExternal(redirectUrl);
         return;
       }
 
