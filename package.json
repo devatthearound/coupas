@@ -1,6 +1,6 @@
 {
   "name": "coupas",
-  "version": "1.0.11",
+  "version": "1.0.15",
   "private": true,
   "homepage": "https://growsome.kr",
   "author": {
@@ -146,7 +146,6 @@
       "icon": "electron/assets/icon.ico"
         },
     "nsis": {
-
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
@@ -163,15 +162,19 @@
       "menuCategory": "디어라운드",
       "artifactName": "쿠파스-설치프로그램-${version}.${ext}"
     },
+    "afterSign": "scripts/notarize.js",
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
       "icon": "electron/assets/icon.icns",
       "category": "public.app-category.productivity",
-     
-      "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "identity": "The Around Inc. (AJNAL73TT5)", 
       "notarize": {
         "teamId": "AJNAL73TT5"
       }
@@ -206,6 +209,13 @@
         "name": "Coupas Auth",
         "schemes": [
           "coupas-auth"
+        ],
+        "role": "Viewer"
+      },
+      {
+        "name": "Coupas Youtube",
+        "schemes": [
+          "google-auth"
         ],
         "role": "Viewer"
       }
