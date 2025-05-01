@@ -262,6 +262,13 @@ app.whenReady().then(() => {
           return new Response('인증 성공');
         }
       }
+
+      if (url.pathname === '/google-auth/success' || url.pathname === 'google-auth/success') {
+        if (mainWindow) {
+          mainWindow.webContents.send('google-auth-success');
+          mainWindow.focus();
+        }
+      }
     } catch (error) {
       console.error('프로토콜 처리 중 오류:', error);
     }
@@ -294,6 +301,14 @@ app.whenReady().then(() => {
             accessToken, 
             refreshToken 
           });
+          mainWindow.focus();
+        }
+      }
+
+      if (parsedUrl.protocol === 'coupas-auth:' && 
+          (parsedUrl.pathname === '/google-auth/success' || parsedUrl.pathname === 'google-auth/success')) {
+        if (mainWindow) {
+          mainWindow.webContents.send('google-auth-success');
           mainWindow.focus();
         }
       }

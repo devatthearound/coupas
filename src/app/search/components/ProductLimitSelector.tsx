@@ -7,7 +7,7 @@ type ProductLimitSelectorProps = {
 function ProductLimitSelector({ limit, setLimit }: ProductLimitSelectorProps) {
     return (
       <div className="flex gap-4 mb-8">
-        {[3, 5, 10, 20].map((num) => (
+        {[3, 5, 10].map((num) => (
           <button
             key={num}
             onClick={() => setLimit(num)}
