@@ -85,8 +85,8 @@
   },
   "build": {
     "appId": "com.growsome.coupas",
-    "productName": "쿠파스해",
-    "executableName": "쿠파스해",
+    "productName": "쿠파스",
+    "executableName": "coupas",
     "copyright": "Copyright © 2025 The Around",
     "publish": [
       {
@@ -162,7 +162,7 @@
       "unicode": true,
       "runAfterFinish": true,
       "menuCategory": "디어라운드",
-      "artifactName": "쿠파스-설치프로그램-${version}.${ext}"
+      "artifactName": "coupas-installer-${version}.${ext}"
     },
     "afterSign": "scripts/notarize.js",
     "mac": {
