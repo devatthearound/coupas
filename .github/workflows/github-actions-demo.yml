@@ -3,15 +3,11 @@ name: Build and Release Electron App
 on:
   push:
     tags:
-      - 'v*'
+      - 'mac-v*'
 
 jobs:
   release:
-    runs-on: ${{ matrix.os }}
-    
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest]
+    runs-on: macos-latest
     
     steps:
       - name: Check out Git repository
@@ -34,7 +30,6 @@ jobs:
       
       # macOS 코드 서명 설정
       - name: Prepare for macOS code signing
-        if: matrix.os == 'macos-latest'
         run: |
           echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > certificate.p12
           security create-keychain -p ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
@@ -49,32 +44,20 @@ jobs:
       
       # 빌드 및 배포 (macOS)
       - name: Build and release for macOS
-        if: matrix.os == 'macos-latest'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}  # 변수명 변경
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
         run: |
           npm run electron:dist
-
-      
-      # 빌드 및 배포 (Windows)
-      - name: Build and release for Windows
-        if: matrix.os == 'windows-latest'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
-        run: |
-          npx electron-builder --win --publish always
       
       # 생성된 아티팩트 업로드
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
+          name: macos-artifacts
           path: |
             dist/*.dmg
-            dist/*.exe
             releases/*.dmg
-            releases/*.exe
           if-no-files-found: ignore
