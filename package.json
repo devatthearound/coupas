@@ -86,7 +86,7 @@
   "build": {
     "appId": "com.growsome.coupas",
     "productName": "쿠파스",
-    "executableName": "coupas",
+    "executableName": "쿠파스",
     "copyright": "Copyright © 2025 The Around",
     "publish": [
       {
