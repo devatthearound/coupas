@@ -23,6 +23,10 @@
     "dist": "run-s build electron:dist",
     "publish": "run-s build electron:publish",
     "electron:publish": "electron-builder --publish always",
+    "publish:mac": "run-s build electron:publish:mac",
+    "electron:publish:mac": "electron-builder --mac --publish always",
+    "publish:win": "run-s build electron:publish:win",
+    "electron:publish:win": "electron-builder --win --publish always",
     "dev": "npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
@@ -142,8 +146,8 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "coupas-${version}-${arch}.${ext}",
-      "publisherName": "디어라운드 (The Around)",
+      "artifactName": "win-${version}-${arch}.${ext}",
+      "publisherName": "The Around",
       "verifyUpdateCodeSignature": false,
       "icon": "electron/assets/icon.ico"
     },
@@ -156,13 +160,13 @@
       "installerHeaderIcon": "electron/assets/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "쿠파스",
+      "shortcutName": "Coupas",
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": false,
       "unicode": true,
       "runAfterFinish": true,
-      "menuCategory": "디어라운드",
-      "artifactName": "coupas-installer-${version}.${ext}"
+      "menuCategory": "The Around",
+      "artifactName": "win-installer-${version}.${ext}"
     },
     "afterSign": "scripts/notarize.js",
     "mac": {
