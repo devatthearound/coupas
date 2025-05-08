@@ -1,73 +1,35 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { LockClosedIcon } from '@heroicons/react/24/solid';
 import { useUser } from '../contexts/UserContext';
-import { useRouter } from 'next/navigation';
-import { checkCoupangApiKeys } from '@/services/coupang/keys';
-import { isElectron } from '@/utils/environment';
+import UserMenu from './UserMenu';
+import GuestMenu from './GuestMenu';
 
-interface NavbarProps {
-  onFormatModalOpen: () => void;
-  onApiModalOpen: () => void;
-  onYoutubeLoginOpen: () => void;
-  isYoutubeLoggedIn: boolean;
-  currentPage: string;
-}
-
-export default function Navbar({ 
-  onFormatModalOpen, 
-  onApiModalOpen,
-  onYoutubeLoginOpen,
-  isYoutubeLoggedIn,
-  currentPage,
-}: NavbarProps) {
-  const router = useRouter();
+export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const [isApiConfigured, setIsApiConfigured] = useState(false);
-  const { user, logout } = useUser();
+  const { user } = useUser();
 
-  useEffect(() => {
-    // Check if API keys are configured
-    const fetchApiConfigStatus = async () => {
-      try {
-        const isConfigured = await checkCoupangApiKeys();
-        setIsApiConfigured(isConfigured);
-      } catch (error) {
-        console.error('API 키 상태 확인 중 오류:', error);
-      }
-    };
+  // useEffect(() => {
+  //   // Check if API keys are configured
+  //   const fetchApiConfigStatus = async () => {
+  //     try {
+  //       const isConfigured = await checkCoupangApiKeys();
+  //       setIsApiConfigured(isConfigured);
+  //     } catch (error) {
+  //       console.error('API 키 상태 확인 중 오류:', error);
+  //     }
+  //   };
 
-    if(user) {
-      fetchApiConfigStatus();
-    }
-  }, [user]);
+  //   if(user) {
+  //     fetchApiConfigStatus();
+  //   }
+  // }, [user]);
 
 
   const isActive = (path: string) => pathname === path;
-
-  const handleLogin = () => {
-    if (isElectron()) {
-      const electronPath = encodeURIComponent(`coupas-auth://login`);
-      const redirectUrl = `https://growsome.kr/login?redirect_to=${electronPath}`;
-
-      router.push(`/external-redirect?url=${encodeURIComponent(redirectUrl)}`);
-    } else {
-      const redirectTo = encodeURIComponent(`${pathname}`);
-
-      const redirectUrl = `${process.env.NEXT_PUBLIC_GROWSOME_BASE_PATH}/login?redirect_to=${redirectTo}`;
-
-      router.push(redirectUrl);
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
 
   return (
     <nav className="bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
@@ -96,43 +58,7 @@ export default function Navbar({
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-3">
-
-            {user ? (
-          <>
-            <button 
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
-            <button
-              onClick={() => {
-                onApiModalOpen();
-              }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                isApiConfigured 
-                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                  : 'bg-[#514FE4]/10 dark:bg-[#514FE4]/20 text-[#514FE4] dark:text-[#6C63FF]'
-              }`}
-            >
-              {isApiConfigured ? '쿠팡 API 설정됨' : '쿠팡 API 설정'}
-            </button>
-          </>
-        ) : (
-          <button onClick={handleLogin}>
-            로그인
-          </button>
-        )}
-            <button
-              onClick={onYoutubeLoginOpen}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all flex items-center gap-1 ${
-                isYoutubeLoggedIn 
-                  ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
-                  : 'bg-[#514FE4]/10 dark:bg-[#514FE4]/20 text-[#514FE4] dark:text-[#6C63FF]'
-              }`}
-            >
-              <LockClosedIcon className="w-4 h-4" />
-              {isYoutubeLoggedIn ? '유튜브 연동됨' : '유튜브 로그인'}
-            </button>
+            {user ? <UserMenu userName={user.name} /> : <GuestMenu />}
           </div>
 
           {/* Mobile menu button */}
@@ -173,44 +99,8 @@ export default function Navbar({
           >
             영상만들기
           </Link>
-
-          {user ? (
-          <>
-            <button 
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
-            <button
-            onClick={() => {
-              onApiModalOpen();
-              setIsMobileMenuOpen(false);
-            }}
-            className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-          >
-            쿠팡 API 설정
-          </button>
-          </>
-        ) : (
-          <button onClick={handleLogin}>
-            로그인
-          </button>
-        )}
-          <button
-            onClick={() => {
-              onYoutubeLoginOpen();
-              setIsMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-1 ${
-              isYoutubeLoggedIn 
-                ? 'text-green-700 bg-green-50 hover:bg-green-100' 
-                : 'text-blue-700 bg-blue-50 hover:bg-blue-100'
-            }`}
-          >
-            <LockClosedIcon className="w-4 h-4" />
-            {isYoutubeLoggedIn ? '유튜브 연동됨' : '유튜브 로그인'}
-          </button>
-        </div>
+            {user ? <UserMenu userName={user.name} /> : <GuestMenu />}
+          </div>
       </div>
     </nav>
   );

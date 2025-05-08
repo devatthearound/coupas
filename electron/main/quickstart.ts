@@ -16,45 +16,91 @@ const categoryIds = {
 const SCOPES = ['https://www.googleapis.com/auth/youtube.upload'];
 const TOKEN_PATH = 'client_oauth_token.json';
 
+ // 결과값 인터페이스 정의
+ interface UploadResult {
+  videoData: {
+    id: string;
+    etag: string;
+    kind: string;
+    snippet: any;
+    status: any;
+  };
+  thumbnailData?: any;
+  thumbnailError?: string;
+}
+
+interface UploadResponse {
+  success: boolean;
+  data?: UploadResult;
+  error?: string;
+  links?: {
+    studioEditLink: string;
+    videoLink: string;
+    studioContentLink: string;
+    apiUpdateEndpoint: string;
+  };
+}
+
 export class YouTubeUploader {
   static async uploadVideo(auth: any, title: any, description: any, tags: any, videoFilePath: any, thumbFilePath: any) {
     // These should use the parameters passed in, not the global variables
 
-    // Debugging logs
-    console.log('Upload initiated with:');
-    console.log('Video file path:', videoFilePath);
-    console.log('Thumbnail file path:', thumbFilePath);
-
     // Check if files exist
     try {
-      console.log('homedir():', homedir() );
       assert(fs.existsSync(videoFilePath), '비디오 파일이 존재하지 않습니다: ' + videoFilePath);
       assert(fs.existsSync(thumbFilePath), '썸네일 파일이 존재하지 않습니다: ' + thumbFilePath);
     } catch (error) {
-      console.error('File existence check failed:', (error as Error).message + 'videoFilePath: ' + videoFilePath + ' thumbFilePath: ' + thumbFilePath);
       return { success: false, error: (error as Error).message };
     }
 
     // Authorize a client with the loaded credentials, then call the YouTube API.
     try {
       const result = await YouTubeUploader.performUpload(auth, title, description, tags, videoFilePath, thumbFilePath);
+      
+      // Generate helpful links for the uploaded video
+      if (result.videoData && result.videoData.id) {
+        const videoId = result.videoData.id;
+        const links = YouTubeUploader.generateVideoLinks(videoId);
+        return { success: true, data: result, links };
+      }
+      
       return { success: true, data: result };
+
     } catch (error) {
-      console.error('Upload failed:', error);
       return { success: false, error: (error as Error).message };
     }
   }
+
+   /**
+   * Generate helpful links for an uploaded YouTube video
+   * 
+   * @param {string} videoId The ID of the uploaded video
+   * @returns {Object} Object containing useful links
+   */
+   static generateVideoLinks(videoId: string) {
+    return {
+      // Link to edit the video in YouTube Studio
+      studioEditLink: `https://studio.youtube.com/video/${videoId}/edit`,
+      
+      // Direct link to the video (even when private)
+      videoLink: `https://www.youtube.com/watch?v=${videoId}`,
+      
+      // Link to YouTube Studio content page
+      studioContentLink: 'https://studio.youtube.com/channel/content',
+      
+      // API endpoint for updating the video's privacy status
+      apiUpdateEndpoint: `https://www.googleapis.com/youtube/v3/videos?part=status&id=${videoId}`
+    };
+  }
+
 
   /**
    * Upload the video file.
    *
    * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
    */
-  static performUpload(auth: any, title: any, description: any, tags: any, videoFilePath: any, thumbFilePath: any) {
-    console.log('Performing upload:', title, description, tags);
-    console.log('Using video file:', videoFilePath);
-    console.log('Using thumbnail file:', thumbFilePath);
-    
+  static performUpload(auth: any, title: any, description: any, tags: any, videoFilePath: any, thumbFilePath: any): Promise<UploadResult> {
+
     return new Promise((resolve, reject) => {
       // 인증 객체가 token 형태인 경우 OAuth2 클라이언트로 변환
       let authClient: any;
@@ -78,9 +124,7 @@ export class YouTubeUploader {
         } else {
           throw new Error('유효한 인증 정보가 없습니다.');
         }
-        
-        console.log('인증 클라이언트 설정 완료');
-        
+                
         const service = google.youtube('v3');
     
         service.videos.insert({
@@ -104,11 +148,9 @@ export class YouTubeUploader {
           },
         }, function(err: any, response: any) {
           if (err) {
-            console.log('The API returned an error: ' + err);
             reject(err);
             return;
           }
-          console.log('Video uploaded successfully:', response.data.id);
     
           // Upload thumbnail
           service.thumbnails.set({
@@ -119,17 +161,14 @@ export class YouTubeUploader {
             },
           }, function(err: any, thumbResponse: any) {
             if (err) {
-              console.log('Thumbnail upload error: ' + err);
               // Still resolve with the video data even if thumbnail fails
               resolve({ videoData: response.data, thumbnailError: err.message });
               return;
             }
-            console.log('Thumbnail uploaded successfully');
             resolve({ videoData: response.data, thumbnailData: thumbResponse.data });
           });
         });
       } catch (error) {
-        console.error('인증 클라이언트 설정 실패:', error);
         reject(error);
       }
     });

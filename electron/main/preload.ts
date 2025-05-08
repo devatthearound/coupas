@@ -6,7 +6,35 @@ ipcRenderer.on('console-message', (_, data) => {
   (console[type as 'log' | 'error' | 'warn' | 'info'])(`[${timestamp}]`, ...args);
 });
 
+const templateFunctions = {
+  // 템플릿 목록 조회
+  getTemplates: () => ipcRenderer.invoke('get-templates'),
+  
+  // 단일 템플릿 조회
+  getTemplate: (id: number) => ipcRenderer.invoke('get-template', id),
+  
+  // 기본 템플릿 조회
+  getDefaultTemplate: () => ipcRenderer.invoke('get-default-template'),
+  
+  // 마지막 사용 템플릿 조회
+  getLastUsedTemplate: () => ipcRenderer.invoke('get-last-used-template'),
+  
+  // 템플릿 저장
+  saveTemplate: (template: any) => ipcRenderer.invoke('save-template', template),
+  
+  // 템플릿 업데이트
+  updateTemplate: (id: number, template: any) => ipcRenderer.invoke('update-template', id, template),
+  
+  // 템플릿 삭제
+  deleteTemplate: (id: number) => ipcRenderer.invoke('delete-template', id),
+  
+  // 템플릿 사용 업데이트
+  updateTemplateUsage: (id: number) => ipcRenderer.invoke('update-template-usage', id),
+}
+
+
 const electron = {
+    templates: templateFunctions,
     // 비디오 파일 선택 다이얼로그
     selectVideoFile: () => ipcRenderer.invoke('select-video-file'),
 

@@ -158,7 +158,7 @@ export class ImageProcessor {
 
       // 한국어에 더 적합한 문자 단위 텍스트 처리
       const maxCharsPerLine = 8; // 한 줄에 표시할 최대 글자 수 (한글 기준)
-      const maxLines = 3; // 최대 줄 수
+      const maxLines = 5; // 최대 줄 수
       
       let nameLines = [];
       let fontSize = defaultPositions.name.fontSize;

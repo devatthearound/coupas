@@ -167,9 +167,9 @@ function ProductsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
+    <div className="flex flex-col w-full h-full bg-white dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 py-12 w-full  h-full overflow-auto">
+      <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">선택된 상품</h1>
           <div className="text-sm text-gray-500 dark:text-gray-400">2/3 단계</div>
         </div>
@@ -192,7 +192,7 @@ function ProductsContent() {
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+              <div className="h-full">
                 <DragDropContext onDragEnd={onDragEnd}>
                   <Droppable droppableId="droppable">
                     {(provided) => (
@@ -450,7 +450,7 @@ function ProductsContent() {
         </div>
       )}
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-md 
+      <div className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-900/50 
         border-t border-gray-200 dark:border-gray-700 p-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">

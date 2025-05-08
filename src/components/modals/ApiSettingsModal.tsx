@@ -29,7 +29,6 @@ export default function ApiSettingsModal({ isOpen, onClose }: ApiSettingsModalPr
         setSecretKey('');
       }
     } catch (error) {
-      console.error('API 키 로드 실패:', error);
       toast.error('API 키 로드 중 오류가 발생했습니다.');
     }
   };
@@ -46,7 +45,6 @@ export default function ApiSettingsModal({ isOpen, onClose }: ApiSettingsModalPr
       toast.success('API 키가 저장되었습니다.');
       onClose();
     } catch (error) {
-      console.error('API 키 저장 실패:', error);
       toast.error('API 키 저장에 실패했습니다.');
     } finally {
       setIsLoading(false);
