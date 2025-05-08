@@ -106,12 +106,39 @@ function setupAutoUpdater() {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  // 현재 버전 확인
+  const currentVersion = app.getVersion();
+  const isMac = process.platform === 'darwin';
+  const isWindows = process.platform === 'win32';
+  
+  // 플랫폼별 버전 체크
+  if (isMac && !currentVersion.startsWith('mac-v')) {
+    console.log('macOS 버전이 아닙니다. 자동 업데이트를 비활성화합니다.');
+    return;
+  }
+  
+  if (isWindows && !currentVersion.startsWith('win-v')) {
+    console.log('Windows 버전이 아닙니다. 자동 업데이트를 비활성화합니다.');
+    return;
+  }
+
   // 업데이트 이벤트 리스너
   autoUpdater.on('checking-for-update', () => {
     console.log('업데이트 확인 중...');
   });
 
   autoUpdater.on('update-available', (info) => {
+    // 플랫폼별 버전 체크
+    if (isMac && !info.version.startsWith('mac-v')) {
+      console.log('macOS 버전이 아닙니다. 업데이트를 건너뜁니다.');
+      return;
+    }
+    
+    if (isWindows && !info.version.startsWith('win-v')) {
+      console.log('Windows 버전이 아닙니다. 업데이트를 건너뜁니다.');
+      return;
+    }
+
     console.log('업데이트 가능');
     if (mainWindow) {
       mainWindow.webContents.send('update-available', info);
