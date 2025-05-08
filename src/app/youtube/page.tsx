@@ -121,7 +121,6 @@ function YouTubeUploader() {
         setUploadStatus(`Upload failed: ${result.error}`);
       }
     } catch (error) {
-      console.error('Upload process error:', error);
       setUploadStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
     } finally {
       setIsUploading(false);
