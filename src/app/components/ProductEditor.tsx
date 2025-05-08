@@ -67,26 +67,19 @@ function ProductEditor({
                         {!isExpanded && (
                             <div className="flex flex-wrap gap-2 ml-[52px] text-xs">
                                 {/* 평점 정보 */}
-                                <span className={`px-2 py-1 rounded ${
-                                    products.rating 
-                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-500' 
-                                    : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
-                                }`}>
-                                    ⭐ {products.rating 
-                                        ? `${products.rating.toFixed(1)} (${products.ratingCount?.toLocaleString() || 0})` 
-                                        : '평점 미입력'}
-                                </span>
-
+                                {
+                                    products.rating && 
+                                    <span className={`px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-500`}>
+                                        ⭐ `${products.rating.toFixed(1)} (${products.ratingCount?.toLocaleString() || 0})` 
+                                    </span>
+                                }
+                               
                                 {/* 할인율 정보 */}
-                                <span className={`px-2 py-1 rounded ${
-                                    products.discountRate > 0
-                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                                    : 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500'
-                                }`}>
-                                    {products.discountRate > 0 
-                                        ? `${products.discountRate}% 할인` 
-                                        : '할인 없음'}
-                                </span>
+                                {
+                                    products.discountRate > 0 && 
+                                    <span className={`px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400`}>{products.discountRate}% 할인</span>
+                                }
+                              
 
                                 {/* 로켓배송 정보 */}
                                 <span className={`px-2 py-1 rounded ${
@@ -100,13 +93,13 @@ function ProductEditor({
                                 </span>
 
                                 {/* 상품 특징 정보 */}
-                                <span className={`px-2 py-1 rounded truncate max-w-[300px] ${
-                                    products.features
-                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-500'
-                                    : 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                                }`}>
-                                    📝 {products.features || '특징 미입력'}
-                                </span>
+                                {
+                                    products.features &&
+                                    <span className={`px-2 py-1 rounded truncate max-w-[300px] bg-gray-100 dark:bg-gray-700 text-gray-500`}>
+                                        📝 {products.features}
+                                    </span>
+                                }
+                                
 
                                 {/* 상품 링크 정보 */}
                                 <span className={`px-2 py-1 rounded truncate max-w-[200px] ${
@@ -175,7 +168,7 @@ function ProductEditor({
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    평점 (별점)
+                                    평점(별점)<span className="text-xs text-gray-500 ml-2">선택항목</span>
                                 </label>
                                 <input
                                     type="number"
@@ -193,7 +186,7 @@ function ProductEditor({
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    리뷰 갯수
+                                    리뷰 갯수<span className="text-xs text-gray-500 ml-1">선택항목</span>
                                 </label>
                                 <input
                                     type="number"
@@ -209,7 +202,7 @@ function ProductEditor({
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    특징
+                                    특징<span className="text-xs text-gray-500 ml-1">선택항목</span>
                                 </label>
                                 <textarea
                                     value={products.features || ''}
@@ -248,8 +241,8 @@ function ProductEditor({
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    할인율 (%)
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 ">
+                                    할인율(%)<span className="text-xs text-gray-500 ml-1">선택항목</span>
                                 </label>
                                 <input
                                     type="number"
@@ -266,7 +259,7 @@ function ProductEditor({
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    상품 링크
+                                    구매링크
                                 </label>
                                 <input
                                     type="text"

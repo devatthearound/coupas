@@ -5,11 +5,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { ProductData } from '@/services/coupang/types';
 import { VideoPreviewModal } from '../components/VideoPreviewModal';
-import {  DropResult } from 'react-beautiful-dnd';
-import { LockClosedIcon } from '@heroicons/react/24/solid';
 import { isElectron } from '@/utils/environment';
-import Image from 'next/image';
 import ProductEditor from '../components/ProductEditor';
+// 기존 import 문에 추가
+import TemplateModal from '../components/TemplateModal';
+import { VideoTemplate, templateService } from '@/services/templates/api';
+import { useUser } from '../contexts/UserContext';
 
 export default function VideoCreationPage() {
   return (
@@ -86,6 +87,9 @@ function VideoCreationContent() {
     // { label: '미니멀 스킨', value: 'minimal', description: '심플한 미니멀 디자인' },
     // { label: '다이나믹 스킨', value: 'dynamic', description: '화려한 모션 디자인' },
   ];
+
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+const { user } = useUser();
 
   const handleIntroVideoChange = async () => {
     try {
@@ -184,9 +188,28 @@ function VideoCreationContent() {
       );
 
       if (result.success) {
+        const videoId = result.links.studioEditLink;
         setUploadProgress(100);
         setUploadStatus('업로드 완료!');
-        toast.success('유튜브 업로드가 완료되었습니다!');
+        toast.success(
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <span>유튜브 업로드가 완료되었습니다</span>
+            <button
+              onClick={() => window.electron.openExternal(videoId)}
+              className="text-[#514FE4] hover:text-[#4140B3] dark:text-[#6C63FF] dark:hover:text-[#5B54E8] font-medium"
+            >
+              바로가기
+            </button>
+          </div>,
+          {
+            duration: 5000,
+            style: {
+              minWidth: 'auto',
+              maxWidth: 'none'
+            }
+          }
+        );
+
         setIsPreviewModalOpen(false);
       } else {
         if (result.error?.includes('Invalid Credentials')) {
@@ -205,39 +228,6 @@ function VideoCreationContent() {
       setUploadProgress(0);
     }
   }, [generatedVideoUrl, router]);
-
-
-  const saveLocally = async () => {
-    if (!generatedVideoUrl) {
-      toast.error('먼저 영상을 생성해주세요.');
-      return;
-    }
-
-    const a = document.createElement('a');
-    a.href = generatedVideoUrl;
-    a.download = 'generated-video.mp4';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast.success('영상이 로컬에 저장되었습니다!');
-  };
-
-  const handleBackgroundTemplateChange = async () => {
-    const filePath = await window.electron.selectImageFile();
-    if (filePath) {
-      console.log('선택된 배경 템플릿 이미지 경로:', filePath);
-      setBackgroundTemplatePath(filePath);
-    }
-  };
-
-  // 로고 이미지 선택 핸들러 추가
-  const handleLogoChange = async () => {
-    const filePath = await window.electron.selectImageFile();
-    if (filePath) {
-      console.log('선택된 로고 이미지 경로:', filePath);
-      setLogoPath(filePath);
-    }
-  };
 
   // 저장 경로 선택 핸들러 추가
   const handleSelectOutputDirectory = async () => {
@@ -297,7 +287,7 @@ function VideoCreationContent() {
         outroVideo,
         backgroundMusic,
         backgroundTemplatePath,
-        selectedProducts,
+        selectedProducts.reverse(),
         logoPath,
         outputDirectory,
         imageDisplayDuration
@@ -317,14 +307,13 @@ function VideoCreationContent() {
         if (confirm('영상 생성이 완료되었습니다. 해당 폴더를 여시겠습니까?')) {
           await window.electron.openFolder(outputDirectory);
         }
+        setIsPreviewModalOpen(true);
       } else {
         setProgress('');
-        console.error('합성 실패 상세 오류:', result.error);
         toast.error(`합성 실패: ${result.error}`);
       }
     } catch (error) {
       setProgress('');
-      console.error('비디오 합성 중 오류:', error);
       toast.error('비디오 합성 중 오류가 발생했습니다.');
     } finally {
       setIsProcessing(false);
@@ -369,7 +358,6 @@ function VideoCreationContent() {
 
       return header + productsText + footer;
     } catch (error) {
-      console.error('상품 정보 처리 오류:', error);
       return '';
     }
   }, [selectedProducts, commentTemplate]);
@@ -378,36 +366,106 @@ function VideoCreationContent() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const productsParam = searchParams.get('products');
+    const searchQuery = sessionStorage.getItem('searchQuery');
     if (productsParam) {
       try {
         const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
         setSelectedProducts(decodedProducts);
+        setVideoTitle(searchQuery || '');
       } catch (error) {
-        console.error('상품 정보 파싱 오류:', error);
         toast.error('상품 정보를 불러오는데 실패했습니다.');
       }
     }
   }, []);
 
-  // 상품 정보가 변경될 때 JSON 문자열 업데이트
-  const handleProductsChange =  (updatedProducts: ExtendedProductData[]) => {
-    setSelectedProducts(updatedProducts);
+  const applyTemplate = (template: VideoTemplate) => {
+    // 입력 필드 값 설정
+    if (template.intro_video_path) {
+      setIntroVideo(template.intro_video_path);
+    }
+    
+    if (template.outro_video_path) {
+      setOutroVideo(template.outro_video_path);
+    }
+    
+    if (template.background_music_path) {
+      setBackgroundMusic(template.background_music_path);
+    }
+    
+    if (template.output_directory) {
+      setOutputDirectory(template.output_directory);
+    }
+    
+    if (template.image_display_duration) {
+      setImageDisplayDuration(template.image_display_duration);
+    }
+    
+    toast.success(`'${template.template_name}' 템플릿이 적용되었습니다.`);
   };
+  
+  /**
+   * 현재 설정을 템플릿으로 저장
+   */
+  const saveCurrentTemplate = async (templateName: string, isDefault: boolean) => {
+    if (!user) {
+      toast.error('로그인이 필요합니다.');
+      return;
+    }
+    
+    try {
+      const template: Partial<VideoTemplate> = {
+        user_id: parseInt(user.id),
+        template_name: templateName,
+        intro_video_path: introVideo || undefined,
+        outro_video_path: outroVideo || undefined,
+        background_music_path: backgroundMusic || undefined,
+        output_directory: outputDirectory || undefined,
+        image_display_duration: imageDisplayDuration,
+        is_default: isDefault,
+        is_active: true
+      };
+      
+      await templateService.createTemplate(template);
+    } catch (error) {
+      console.error('템플릿 저장 오류:', error);
+      toast.error('템플릿 저장 중 오류가 발생했습니다.');
+      throw error;
+    }
+  };
+  
+  useEffect(() => {
+    const loadDefaultTemplate = async () => {
+      try {
+        const template = await templateService.getDefaultTemplate();
+        if (template) {
+          applyTemplate(template);
+        }
+      } catch (error) {
+        console.error('기본 템플릿 로드 오류:', error);
+      }
+    }
+    
+    loadDefaultTemplate();
+  }, []);
+
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col w-full h-full bg-white dark:bg-gray-900">
       <VideoPreviewModal
+        videoTitle={videoTitle}
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         videoUrl={generatedVideoUrl || ''}
         onYoutubeUpload={uploadToYoutube}
-        onLocalDownload={saveLocally}
-        comments={generateComment()}  
+        comments={customComments || generateComment()}  
         commentTemplate={commentTemplate}
-        onCommentTemplateChange={setCommentTemplate}
+        onCommentTemplateChange={(template) => {
+          setCommentTemplate(template);
+          setCustomComments(generateComment());
+        }}
         onCommentsChange={setCustomComments}
       />
-
+  
       {/* Progress Overlay - visible only when processing */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -441,7 +499,7 @@ function VideoCreationContent() {
           </div>
         </div>
       )}
-
+  
       {/* 업로드 중 오버레이 */}
       {isUploading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -484,7 +542,7 @@ function VideoCreationContent() {
           </div>
         </div>
       )}
-
+  
       {/* 구글 인증 오버레이 */}
       {isAuthenticating && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -515,13 +573,42 @@ function VideoCreationContent() {
           </div>
         </div>
       )}
-
-      <div className="container mx-auto px-4 py-12">
+  
+  {/* <div className="max-w-7xl mx-auto px-4 py-12 w-full h-full overflow-auto"> */}
+  {/* 헤더 부분 개선 - 제목과 템플릿 버튼을 함께 배치 */}
+        <div className="max-w-7xl mx-auto px-4 py-12 w-full  h-full overflow-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">영상 생성</h1>
-          <div className="text-sm text-gray-500 dark:text-gray-400">3/3 단계</div>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              영상 만들기
+            </h1>
+            <button
+              onClick={() => setIsTemplateModalOpen(true)}
+              className="px-4 py-2 bg-[#514FE4]/10 text-[#514FE4] dark:bg-[#6C63FF]/10 dark:text-[#6C63FF] 
+                hover:bg-[#514FE4]/20 dark:hover:bg-[#6C63FF]/20 rounded-lg font-medium flex items-center gap-2 transition-colors"
+            >
+              <svg 
+                className="w-5 h-5" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" 
+                />
+              </svg>
+              템플릿 관리
+            </button>
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            3/3 단계
+          </div>
         </div>
 
+        
         <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mb-8">
           <div className="flex flex-col gap-4">
             <div>
@@ -541,27 +628,7 @@ function VideoCreationContent() {
                 placeholder="키워드를 입력하세요"
               />
             </div>
-            {/* 로고 이미지 선택 버튼 추가 */}
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                로고 이미지
-              </label>
-              <button
-                onClick={handleLogoChange}
-                className="block w-full text-sm text-gray-500 dark:text-gray-400 rounded text-left transition-colors"
-              >
-                <span className="inline-block mr-4 py-2 px-4
-                  rounded-full border-0 
-                  text-sm font-semibold
-                  bg-[#514FE4]/10 text-[#514FE4]
-                  dark:bg-[#6C63FF]/10 dark:text-[#6C63FF]
-                  hover:bg-[#514FE4]/20">
-                  파일 선택
-                </span>
-                {logoPath ? logoPath.split('/').pop() : '선택된 파일 없음'}
-              </button>
-            </div> */}
-
+  
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 인트로 영상
@@ -600,48 +667,7 @@ function VideoCreationContent() {
                 {outroVideo ? outroVideo.split('/').pop() : '선택된 파일 없음'}
               </button>
             </div>
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                비디오 스킨 선택
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {skinOptions.map((skin) => (
-                  <label
-                    key={skin.value}
-                    className={`relative flex flex-col p-4 border rounded-lg cursor-pointer transition-all
-                      ${selectedSkin === skin.value 
-                        ? 'border-[#514FE4] dark:border-[#6C63FF] bg-[#514FE4]/5 dark:bg-[#6C63FF]/5' 
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                  >
-                    <input
-                      type="radio"
-                      name="skin"
-                      value={skin.value}
-                      checked={selectedSkin === skin.value}
-                      onChange={() => setSelectedSkin(skin.value)}
-                      className="absolute opacity-0"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {skin.label}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {skin.description}
-                      </span>
-                    </div>
-                    {selectedSkin === skin.value && (
-                      <div className="absolute top-2 right-2 text-[#514FE4] dark:text-[#6C63FF]">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    )}
-                  </label>
-                ))}
-              </div>
-            </div> */}
-
+  
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 배경 음악
@@ -661,26 +687,7 @@ function VideoCreationContent() {
                 {backgroundMusic ? backgroundMusic.split('/').pop() : '선택된 파일 없음'}
               </button>
             </div>
-            {/* <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                배경 템플릿 이미지
-              </label>
-              <button
-                onClick={handleBackgroundTemplateChange}
-                className="block w-full text-sm text-gray-500 dark:text-gray-400 rounded text-left transition-colors"
-              >
-                <span className="inline-block mr-4 py-2 px-4
-                  rounded-full border-0 
-                  text-sm font-semibold
-                  bg-[#514FE4]/10 text-[#514FE4]
-                  dark:bg-[#6C63FF]/10 dark:text-[#6C63FF]
-                  hover:bg-[#514FE4]/20">
-                  파일 선택
-                </span>
-                {backgroundTemplatePath ? backgroundTemplatePath.split('/').pop() : '선택된 파일 없음'}
-              </button>
-            </div> */}
-
+  
             {/* 이미지 표시 시간 설정 추가 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -701,7 +708,7 @@ function VideoCreationContent() {
                 </span>
               </div>
             </div>
-
+  
             {/* 저장 경로 선택 버튼 추가 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -722,7 +729,7 @@ function VideoCreationContent() {
                 {outputDirectory ? outputDirectory : '선택된 폴더 없음'}
               </button>
             </div>
-
+  
             {/* 상품 정보 수정 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -742,70 +749,71 @@ function VideoCreationContent() {
                 ))}
               </div>
             </div>
-            <button
-              onClick={generateVideo}
-              className="flex items-center justify-center gap-1 px-4 py-2 bg-[#514FE4] text-white rounded-lg hover:bg-[#4140B3] 
-                dark:bg-[#6C63FF] dark:hover:bg-[#5B54E8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!videoTitle || selectedProducts.length === 0 || !introVideo || !outroVideo || !backgroundMusic || !outputDirectory}
-            >
-                영상 생성
-            </button>
           </div>
         </div>
-
-     
       </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-900/50 
-        border-t border-gray-200 dark:border-gray-700 p-4 flex justify-center items-center gap-4">
-        <button 
-          onClick={handleBack}
-          className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg 
-            hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
-        >
-          이전
-        </button>
-        
-       
-       
-         {/* 영상 내보내기 버튼 */}
-         <div className="relative group">
-          <button
-            onClick={() => {
-              setIsPreviewModalOpen(true);
-            }}
-            // disabled={process.env.NODE_ENV !== 'development'}
-            className={`px-6 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-2
-              bg-gradient-to-r from-purple-500 to-indigo-500 
-              text-white/90 hover:opacity-100 hover:shadow-lg
-              ${process.env.NODE_ENV === 'development' 
-                ? 'opacity-100 cursor-pointer' 
-                : 'opacity-80 cursor-not-allowed'
-              }`}
-          >
-            유투브로 내보내기
-            {/* <LockClosedIcon className="w-4 h-4 animate-pulse" /> */}
-              {/* 유투브로 내보내기
-            {process.env.NODE_ENV !== 'development' && (
-              <span className="ml-1 text-xs px-2 py-0.5 bg-white/20 rounded-full">PRO</span>
-            )} */}
-          </button>
-          {/* {process.env.NODE_ENV !== 'development' && (
-            <div className="absolute bottom-full mb-2 hidden group-hover:block w-56 
-              bg-gradient-to-r from-purple-600 to-indigo-600 text-white
-              text-sm rounded-lg p-3 shadow-xl transform transition-all duration-200
-              border border-white/10 backdrop-blur-sm">
-              <div className="flex items-center gap-2">
-                <LockClosedIcon className="w-4 h-4" />
-                <span>프리미엄 기능입니다</span>
-              </div>
-              <p className="text-xs text-white/80 mt-1">
-                업그레이드하여 고품질 영상을 제작해보세요
-              </p>
+            {/* Bottom Navigation */}
+            <div className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-900/50 
+        border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              {selectedProducts.length}개 선택됨
             </div>
-          )} */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => router.back()}
+                className="px-6 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 
+                  dark:hover:bg-gray-700 rounded-lg transition-colors font-medium"
+              >
+                이전
+              </button>
+              
+              {/* 다운로드 버튼 */}
+              <div className="relative group">
+                <button
+                  onClick={generateVideo}
+                  disabled={selectedProducts.length === 0}
+                  className={`px-6 py-2.5 rounded-lg transition-colors font-medium flex items-center gap-2
+                    ${selectedProducts.length > 0
+                      ? 'bg-[#514FE4] hover:bg-[#4140B3] dark:bg-[#6C63FF] dark:hover:bg-[#5B54E8] text-white'
+                      : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    }`}
+                >
+                  영상 생성
+                </button>
+              </div>
+
+              {/* 영상 내보내기 버튼 */}
+              <div className="relative group">
+                <button
+                  disabled={!generatedVideoUrl}
+                  onClick={() => setIsPreviewModalOpen(true)}
+                  className="px-6 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-2
+                    bg-gradient-to-r from-purple-500 to-indigo-500 opacity-80
+                    text-white/90 hover:opacity-100 hover:shadow-lg"
+                >
+                  Youtube 업로드
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      <TemplateModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+        currentSettings={{
+          templateName: videoTitle, // 현재 비디오 제목을 기본 템플릿 이름으로 사용
+          introVideo,
+          outroVideo,
+          backgroundMusic,
+          outputDirectory,
+          imageDisplayDuration
+        }}
+        onLoadTemplate={applyTemplate}
+        onSaveTemplate={saveCurrentTemplate}
+      />
     </div>
   );
 }

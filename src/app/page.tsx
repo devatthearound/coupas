@@ -6,8 +6,7 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="text-center">
+      <div className="max-w-7xl h-full mx-auto px-4 py-12 text-center">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             쿠팡 파트너스 <span className="text-[#514FE4]">영상 생성기</span>
           </h1>
@@ -33,7 +32,6 @@ export default function HomePage() {
           >
             ✨ 시작하기
           </button>
-        </div>
       </div>
   );
 }

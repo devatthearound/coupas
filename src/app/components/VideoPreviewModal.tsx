@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 interface VideoPreviewModalProps {
+  videoTitle: string;
   isOpen: boolean;
   onClose: () => void;
   videoUrl: string;
@@ -11,7 +12,6 @@ interface VideoPreviewModalProps {
     tags: string[];
     thumbnailPath: string;
   }) => void;
-  onLocalDownload: () => void;
   comments: string;
   commentTemplate: 'template1' | 'template2';
   onCommentTemplateChange: (template: 'template1' | 'template2') => void;
@@ -19,11 +19,11 @@ interface VideoPreviewModalProps {
 }
 
 export function VideoPreviewModal({
+  videoTitle,
   isOpen,
   onClose,
   videoUrl,
   onYoutubeUpload,
-  onLocalDownload,
   comments,
   commentTemplate,
   onCommentTemplateChange,
@@ -90,7 +90,7 @@ export function VideoPreviewModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-gray-900 rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-white">영상 미리보기</h3>
+          <h3 className="text-lg font-semibold text-white">{videoTitle}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-300">✕</button>
         </div>
 
@@ -180,12 +180,6 @@ export function VideoPreviewModal({
             className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
           >
             유튜브 업로드
-          </button>
-          <button
-            onClick={onLocalDownload}
-            className="px-6 py-2 bg-[#514FE4] text-white rounded-lg hover:bg-[#4140B3]"
-          >
-            로컬 저장
           </button>
         </div>
       </div>

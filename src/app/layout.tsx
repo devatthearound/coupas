@@ -6,7 +6,7 @@ import "./globals.css";
 import { UserProvider } from "./contexts/UserContext";
 import toast, { Toaster } from "react-hot-toast";
 import Navbar from './components/Navbar';
-import { FormatModal, ApiModal, YoutubeModal } from './components/Modals';
+import {  YoutubeModal } from './components/Modals';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,10 +28,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
-  const [isApiModalOpen, setIsApiModalOpen] = useState(false);
-  const [isYoutubeModalOpen, setIsYoutubeModalOpen] = useState(false);
-  const [isYoutubeLoggedIn, setIsYoutubeLoggedIn] = useState(false);
 
   useEffect(() => {
     // Electron 환경에서만 실행
@@ -80,36 +76,17 @@ export default function RootLayout({
   
 
   return (
-    <html lang="en">
+    <html lang="en" className="w-full h-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        className={`flex flex-col w-full h-full bg-gray-50 overflow-hidden ${geistSans.variable} ${geistMono.variable} antialiased`}>
         <UserProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <Toaster position="bottom-center" />
-          <Navbar
-            onFormatModalOpen={() => setIsFormatModalOpen(true)}
-            onApiModalOpen={() => setIsApiModalOpen(true)}
-            onYoutubeLoginOpen={() => setIsYoutubeModalOpen(true)}
-            isYoutubeLoggedIn={isYoutubeLoggedIn}
-            currentPage="search"
-          />
-          <FormatModal 
-            isOpen={isFormatModalOpen} 
-            onClose={() => setIsFormatModalOpen(false)} 
-          />
-          <ApiModal 
-            isOpen={isApiModalOpen} 
-            onClose={() => setIsApiModalOpen(false)} 
-          />
-          <YoutubeModal 
-            isOpen={isYoutubeModalOpen} 
-            onClose={() => setIsYoutubeModalOpen(false)}
-            onYoutubeLogin={setIsYoutubeLoggedIn}
-          />
+          <Navbar />
+          <div className="w-full h-full overflow-auto">
             {children}
           </div>
         </UserProvider>
-        </body>
+      </body>
     </html>
   );
 }

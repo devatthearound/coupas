@@ -65,7 +65,6 @@ export async function checkCoupangApiKeys(): Promise<boolean> {
 
     return data.exists;
   } catch (error) {
-    console.error('API 키 존재 여부 확인 중 오류:', error);
     return false;
   }
 } 
