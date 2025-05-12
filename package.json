@@ -85,9 +85,10 @@
   },
   "build": {
     "appId": "com.growsome.coupas",
-    "productName": "쿠파스",
-    "executableName": "쿠파스",
+    "productName": "coupas",
+    "executableName": "coupas",
     "copyright": "Copyright © 2025 The Around",
+    "asar": true,
     "publish": [
       {
         "provider": "github",
@@ -167,8 +168,14 @@
     "afterSign": "scripts/notarize.js",
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
       ],
       "artifactName": "mac-${version}-${arch}.${ext}",
       "entitlements": "entitlements.mac.plist",
@@ -177,7 +184,7 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": "The Around Inc. (AJNAL73TT5)",
+      "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39",
       "notarize": {
         "teamId": "AJNAL73TT5"
       }
