@@ -101,25 +101,51 @@ function setupAutoUpdater() {
     return;
   }
 
-  // 로그 설정
   autoUpdater.logger = console;
+
+  // Windows 전용 설정
+  if (process.platform === 'win32') {
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'devatthearound',
+      repo: 'coupas',
+      token: process.env.GH_TOKEN,
+      private: false,
+      channel: 'latest',
+      // Windows 전용 설정
+      updaterCacheDirName: 'coupas-updater',
+      requestHeaders: {
+        'User-Agent': 'coupas-updater'
+      }
+    });
+  }
+
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowDowngrade = false;
+  autoUpdater.allowPrerelease = false;
 
   // 업데이트 이벤트 리스너
   autoUpdater.on('checking-for-update', () => {
-    console.log('업데이트 확인 중...');
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'checking');
+    }
   });
 
   autoUpdater.on('update-available', (info) => {
-    console.log('업데이트 가능');
     if (mainWindow) {
       mainWindow.webContents.send('update-available', info);
+      // Windows에서는 수동으로 다운로드 시작
+      if (process.platform === 'win32') {
+        autoUpdater.downloadUpdate();
+      }
     }
   });
 
   autoUpdater.on('update-not-available', (info) => {
-    console.log('업데이트 없음');
+    if (mainWindow) {
+      mainWindow.webContents.send('update-status', 'not-available');
+    }
   });
 
   autoUpdater.on('download-progress', (progressObj) => {
@@ -138,15 +164,21 @@ function setupAutoUpdater() {
     if (mainWindow) {
       mainWindow.webContents.send('update-downloaded', info);
       
-      // 사용자에게 업데이트 설치 확인 다이얼로그 표시
-      dialog.showMessageBox({
+      dialog.showMessageBox(mainWindow, {
         type: 'info',
         title: '업데이트 준비 완료',
         message: `새 버전 ${info.version}이(가) 다운로드되었습니다. 지금 재시작하여 업데이트를 설치하시겠습니까?`,
-        buttons: ['예', '아니오']
-      }).then((buttonIndex) => {
-        if (buttonIndex.response === 0) {
-          autoUpdater.quitAndInstall();
+        buttons: ['예', '아니오'],
+        defaultId: 0
+      }).then((result) => {
+        if (result.response === 0) {
+          // Windows에서는 특별한 옵션으로 설치
+          if (process.platform === 'win32') {
+            autoUpdater.quitAndInstall(false, true);
+          } else {
+            autoUpdater.quitAndInstall();
+          }
+        } else {
         }
       });
     }
@@ -161,12 +193,7 @@ function setupAutoUpdater() {
 
   // 업데이트 확인 시작 (시작 시 그리고 매 2시간마다)
   setTimeout(() => {
-    autoUpdater.checkForUpdatesAndNotify();
-    
-    // 정기적인 업데이트 확인 (2시간마다)
-    setInterval(() => {
-      autoUpdater.checkForUpdatesAndNotify();
-    }, 2 * 60 * 60 * 1000);
+  autoUpdater.checkForUpdatesAndNotify();
   }, 10000); // 앱 시작 10초 후 첫 검사
 }
 
