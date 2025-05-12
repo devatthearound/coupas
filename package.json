@@ -37,7 +37,7 @@
     "@heroicons/react": "^2.2.0",
     "@next/env": "^14.2.5",
     "axios": "^1.8.1",
-    "bcrypt": "^5.1.1",
+    "bcrypt": "^6.0.0",
     "cross-env": "^7.0.3",
     "electron-notarize": "^1.2.2",
     "electron-store": "^8.1.0",
@@ -170,11 +170,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "artifactName": "mac-${version}-${arch}.${ext}",
