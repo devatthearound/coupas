@@ -12,7 +12,7 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
-    timeout-minutes: 30  # 시간 초과 제한 증가
+    timeout-minutes: 30
     strategy:
       matrix:
         arch: [x64, arm64]
@@ -30,34 +30,33 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        
-      # macOS 코드 서명 인증서가 필요한 경우에만 사용
-      - name: Import macOS certificates
+      
+      - name: Build Next.js
+        run: npm run next:build
+      
+      - name: Build Electron
+        run: npm run electron:build
+      
+      - name: Setup for macOS signing
         if: startsWith(github.ref, 'refs/tags/')
-        uses: apple-actions/import-codesign-certs@v1
-        with:
-          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
-          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-
-      # 몇 가지 최적화와 함께 빌드 과정 개선
-      - name: Build Electron App
+        run: |
+          # 공증 및 서명에 필요한 환경 설정
+          echo "NODE_ENV=production" >> $GITHUB_ENV
+        
+      - name: Build and package for macOS
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          # 개발 빌드를 위해 공증 건너뛰기 (태그가 아닌 경우)
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ startsWith(github.ref, 'refs/tags/') }}
-          # 공증이 필요한 경우에만 이 변수들 설정 (태그인 경우)
-          APPLE_ID: ${{ startsWith(github.ref, 'refs/tags/') && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/') && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ startsWith(github.ref, 'refs/tags/') && secrets.APPLE_TEAM_ID || '' }}
-          # Node.js 메모리 제한 증가 - M1/arm64에서 중요
+          # GitHub에 안전하게 저장된 시크릿 사용
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          
+          # 태그 빌드가 아닌 경우 공증 건너뛰기
+          SKIP_NOTARIZATION: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          
+          # 메모리 제한 증가
           NODE_OPTIONS: --max-old-space-size=8192
         run: |
-          # Next.js 먼저 빌드
-          npm run next:build
-          
-          # Electron 빌드
-          npm run electron:build
-          
           # 최대 3번까지 재시도하는 빌드 스크립트
           max_attempts=3
           attempt=1
@@ -89,73 +88,4 @@ jobs:
           path: |
             releases/*.dmg
             releases/mac*.dmg
-            releases/mac-${{ matrix.arch }}/*.dmg
-          if-no-files-found: warn  # 경고만 하고 실패하지 않음
-
-  # Windows 빌드 (별도 작업으로 분리)
-  build-windows:
-    runs-on: windows-latest
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        arch: [x64, arm64]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build Electron App
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NODE_OPTIONS: --max-old-space-size=8192
-        run: |
-          # Next.js 빌드
-          npm run next:build
-          
-          # Electron 빌드
-          npm run electron:build
-          
-          # 최대 3번까지 재시도하는 스크립트
-          $maxAttempts = 3
-          $attempt = 1
-          
-          while ($attempt -le $maxAttempts) {
-            Write-Host "Attempt $attempt of $maxAttempts"
-            
-            try {
-              npx electron-builder build --win --${{ matrix.arch }} ${{ !startsWith(github.ref, 'refs/tags/') && '--publish never' || '' }}
-              Write-Host "Build successful!"
-              break
-            } catch {
-              Write-Host "Build attempt $attempt failed: $_"
-              $attempt++
-              
-              if ($attempt -le $maxAttempts) {
-                Write-Host "Waiting 30 seconds before retrying..."
-                Start-Sleep -Seconds 30
-              } else {
-                Write-Host "All attempts failed. Exiting."
-                exit 1
-              }
-            }
-          }
-          
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: win-${{ matrix.arch }}
-          path: |
-            releases/*.exe
-            releases/win*.exe
-            releases/win-${{ matrix.arch }}/*.exe
           if-no-files-found: warn

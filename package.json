@@ -21,8 +21,6 @@
     "install-sharp-mac": "npm_config_platform=darwin npm_config_arch=x64 npm install sharp",
     "install-sharp-all": "npm run install-sharp-win && npm run install-sharp-mac",
     "electron:build": "tsup --minify --treeshake --clean",
-
-
     "build-mac-arm64": "electron-builder build --mac --arm64",
     "build-mac-x64": "electron-builder build --mac --x64",
     "build-win-x64": "electron-builder build --win --x64",
@@ -220,10 +218,7 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39",
-      "notarize": {
-        "teamId": "AJNAL73TT5"
-      }
+      "notarize": true
     },
     "dmg": {
       "background": "electron/assets/dmg-background.png",
