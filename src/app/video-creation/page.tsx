@@ -267,6 +267,7 @@ const { user } = useUser();
       return;
     }
 
+    
     try {
       setIsProcessing(true);
       setProgress('비디오와 이미지를 합치는 중...');
