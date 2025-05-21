@@ -218,7 +218,7 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "notarize": true
+      "notarize": false
     },
     "dmg": {
       "background": "electron/assets/dmg-background.png",

@@ -3,8 +3,6 @@ name: Build Electron App
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -12,80 +10,49 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
-    timeout-minutes: 30
-    strategy:
-      matrix:
-        arch: [x64, arm64]
+    timeout-minutes: 15  # 전체 작업 타임아웃 설정
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+        timeout-minutes: 2  # 체크아웃 단계 타임아웃
+        
       - name: Setup Node.js
         uses: actions/setup-node@v4
+        timeout-minutes: 2  # Node.js 설정 단계 타임아웃
         with:
           node-version: '20'
           cache: 'npm'
-
+          
       - name: Install dependencies
+        timeout-minutes: 5  # 의존성 설치 타임아웃
         run: npm ci
-      
-      - name: Build Next.js
-        run: npm run next:build
-      
-      - name: Build Electron
-        run: npm run electron:build
-      
-      - name: Setup for macOS signing
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          # 공증 및 서명에 필요한 환경 설정
-          echo "NODE_ENV=production" >> $GITHUB_ENV
         
-      - name: Build and package for macOS
+      - name: Build application
+        timeout-minutes: 10  # 빌드 단계 타임아웃
         env:
-          # GitHub에 안전하게 저장된 시크릿 사용
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          
-          # 태그 빌드가 아닌 경우 공증 건너뛰기
-          SKIP_NOTARIZATION: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          
-          # 메모리 제한 증가
+          SKIP_NOTARIZATION: true
           NODE_OPTIONS: --max-old-space-size=8192
         run: |
-          # 최대 3번까지 재시도하는 빌드 스크립트
-          max_attempts=3
-          attempt=1
+          npm run next:build
+          npm run electron:build
+          npx electron-builder build --mac --x64 --arm64 --publish never
           
-          while [ $attempt -le $max_attempts ]; do
-            echo "Attempt $attempt of $max_attempts"
-            
-            if npx electron-builder build --mac --${{ matrix.arch }} ${{ !startsWith(github.ref, 'refs/tags/') && '--publish never' || '' }}; then
-              echo "Build successful!"
-              break
-            else
-              echo "Build attempt $attempt failed"
-              attempt=$((attempt+1))
-              
-              if [ $attempt -le $max_attempts ]; then
-                echo "Waiting 30 seconds before retrying..."
-                sleep 30
-              else
-                echo "All attempts failed. Exiting."
-                exit 1
-              fi
-            fi
-          done
-
-      - name: Upload artifacts
+      # 아티팩트 업로드 단계를 분리하여 최적화
+      - name: Upload x64 artifact
+        timeout-minutes: 3  # 업로드 타임아웃
         uses: actions/upload-artifact@v4
         with:
-          name: mac-${{ matrix.arch }}
-          path: |
-            releases/*.dmg
-            releases/mac*.dmg
+          name: mac-x64
+          path: releases/coupas-0.0.1-mac-x64.dmg
           if-no-files-found: warn
+          compression-level: 0  # DMG는 이미 압축되어 있음
+          
+      - name: Upload arm64 artifact
+        timeout-minutes: 3  # 업로드 타임아웃
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: releases/coupas-0.0.1-mac-arm64.dmg
+          if-no-files-found: warn
+          compression-level: 0
