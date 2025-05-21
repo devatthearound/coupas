@@ -16,16 +16,28 @@
     "next:start": "next start",
     "next:lint": "next lint",
     "dev": "npm-run-all --parallel electron:dev next:dev",
-    "publish": "run-s build electron:publish",
     "postinstall": "electron-builder install-app-deps",
     "install-sharp-win": "npm_config_platform=win32 npm_config_arch=x64 npm install sharp",
     "install-sharp-mac": "npm_config_platform=darwin npm_config_arch=x64 npm install sharp",
     "install-sharp-all": "npm run install-sharp-win && npm run install-sharp-mac",
     "electron:build": "tsup --minify --treeshake --clean",
+
+
+    "build-mac-arm64": "electron-builder build --mac --arm64",
+    "build-mac-x64": "electron-builder build --mac --x64",
+    "build-win-x64": "electron-builder build --win --x64",
+    "build-win-arm64": "electron-builder build --win --arm64",
+    "build-all": "npm run build && electron-builder build -mw --x64 --arm64",
+    "docker:build": "chmod +x build.sh && ./build.sh",
+    "docker:mac-arm64": "docker-compose run --rm electron-builder npm run build-mac-arm64",
+    "docker:mac-x64": "docker-compose run --rm electron-builder npm run build-mac-x64",
+    "docker:win-x64": "docker-compose run --rm electron-builder npm run build-win-x64",
+    "docker:win-arm64": "docker-compose run --rm electron-builder npm run build-win-arm64",
+
+
     "build": "cross-env NODE_ENV=production run-s electron:build next:build",
-    "build-win": "npm run build && electron-builder build --win --publish never",
-    "build-mac": "npm run build && electron-builder build --mac --publish never",
-    "build-all": "npm run build && electron-builder build -mw --publish never"
+    "publish": "electron-builder --publish always"
+  
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0",
@@ -155,12 +167,16 @@
     ],
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "nsis",
+          "arch": ["x64", "arm64"]
+        }
       ],
-      "artifactName": "win-${version}-${arch}.${ext}",
+      "artifactName": "coupas-${version}-win-${arch}.${ext}",
       "publisherName": "The Around",
       "verifyUpdateCodeSignature": false,
-      "icon": "electron/assets/icon.ico"
+      "icon": "electron/assets/icon.ico",
+      "signDlls": true
     },
     "nsis": {
       "oneClick": false,
@@ -177,7 +193,7 @@
       "unicode": true,
       "runAfterFinish": true,
       "menuCategory": "디어라운드",
-      "artifactName": "win-installer-${version}.${ext}"
+      "artifactName": "coupas-${version}-win-installer-${arch}.${ext}"
     },
     "afterSign": "scripts/notarize.js",
     "mac": {
@@ -197,7 +213,7 @@
           ]
         }
       ],
-      "artifactName": "mac-${version}-${arch}.${ext}",
+      "artifactName": "coupas-${version}-mac-${arch}.${ext}",
       "entitlements": "entitlements.mac.plist",
       "entitlementsInherit": "entitlements.mac.plist",
       "icon": "electron/assets/icon.icns",

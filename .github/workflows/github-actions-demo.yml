@@ -1,80 +1,136 @@
-name: Build and Release Electron App
+name: Build Electron App
 
 on:
   push:
+    branches: [ main ]
     tags:
-      - 'v*'
+      - 'v*'  # 버전 태그 푸시 시 빌드 (예: v1.0.0)
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 수동 트리거 허용
 
 jobs:
-  release:
-    runs-on: ${{ matrix.os }}
-    
+  # macOS 빌드 (Intel 및 Apple Silicon)
+  build-macos:
+    runs-on: macos-latest  # macOS 러너 사용
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
-    
+        arch: [x64, arm64]  # Intel 및 Apple Silicon 빌드
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v4
-      
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          node-version: 18
+          fetch-depth: 0  # 전체 히스토리 체크아웃 (버전 정보용)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
           cache: 'npm'
-      
+
       - name: Install dependencies
         run: npm ci
-      
-      - name: Build Next.js
-        run: npm run next:build
-      
-      - name: Build Electron
-        run: npm run electron:build
-      
-      # macOS 코드 서명 설정
-      - name: Prepare for macOS code signing
-        if: matrix.os == 'macos-latest'
-        run: |
-          echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > certificate.p12
-          security create-keychain -p ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-          security import certificate.p12 -k build.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-      
-      # 빌드 및 배포 (macOS)
-      - name: Build and release for macOS
-        if: matrix.os == 'macos-latest'
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}  # 변수명 변경
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
-        run: |
-          npm run electron:dist
-
-      
-      # 빌드 및 배포 (Windows)
-      - name: Build and release for Windows
-        if: matrix.os == 'windows-latest'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
-        run: |
-          npx electron-builder --win --publish always
-      
-      # 생성된 아티팩트 업로드
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        
+      - name: Import macOS certificates
+        if: startsWith(github.ref, 'refs/tags/')  # 태그 빌드에서만
+        uses: apple-actions/import-codesign-certs@v1
         with:
-          name: ${{ matrix.os }}-artifacts
-          path: |
-            dist/*.dmg
-            dist/*.exe
-            releases/*.dmg
-            releases/*.exe
-          if-no-files-found: ignore
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+
+      - name: Build Electron App
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub API 접근용
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # V8 메모리 제한 증가
+          export NODE_OPTIONS=--max-old-space-size=8192
+          
+          # 특정 아키텍처용 빌드
+          npm run build
+          npx electron-builder build --mac --${{ matrix.arch }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mac-${{ matrix.arch }}
+          path: releases/mac*.dmg
+
+  # Windows 빌드 (x64 및 ARM64)
+  build-windows:
+    runs-on: windows-latest  # Windows 러너 사용
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Import Windows certificate
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          WIN_CSC_LINK: ${{ secrets.WINDOWS_PFX_FILE }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          echo $env:WIN_CSC_LINK | Out-File cert.pfx -Encoding Ascii
+
+      - name: Build Electron App
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: cert.pfx
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: |
+          # V8 메모리 제한 증가
+          $env:NODE_OPTIONS="--max-old-space-size=8192"
+          
+          # 빌드 실행
+          npm run build
+          npx electron-builder build --win --${{ matrix.arch }}
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: win-${{ matrix.arch }}
+          path: releases/win*.exe
+
+  # 릴리스 생성 (태그 푸시 시만)
+  create-release:
+    needs: [build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true  # 수동 검토를 위해 드래프트로 생성
+          files: |
+            artifacts/mac-x64/*.dmg
+            artifacts/mac-arm64/*.dmg
+            artifacts/win-x64/*.exe
+            artifacts/win-arm64/*.exe
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

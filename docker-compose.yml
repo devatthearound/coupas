@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  electron-builder:
+    build: .
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      # Electron 캐시 공유
+      - ~/.cache/electron:/root/.cache/electron
+      - ~/.cache/electron-builder:/root/.cache/electron-builder
+      # 빌드 결과물 저장
+      - ./releases:/app/releases
+    environment:
+      - NODE_ENV=production
+      # macOS 및 Windows 빌드 설정
+      - CSC_IDENTITY_AUTO_DISCOVERY=false  # 코드 서명 자동 탐색 비활성화
+      - EP_GH_IGNORE_TIME=true  # GitHub API 시간 제한 무시
+      # 메모리 제한 설정
+      - NODE_OPTIONS=--max-old-space-size=8192
+    # 메모리 제한 설정 (하드웨어 제한)
+    mem_limit: 8g
+
+volumes:
+  node_modules:
