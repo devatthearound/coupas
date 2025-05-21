@@ -12,6 +12,11 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
+        arch: [x64, arm64]
+        # Windows ARM64 빌드는 제외
+        exclude:
+          - os: windows-latest
+            arch: arm64
     
     steps:
       - name: Check out Git repository
@@ -33,48 +38,46 @@ jobs:
         run: npm run electron:build
       
       # macOS 코드 서명 설정
-      - name: Prepare for macOS code signing
+      - name: Import macOS certificates
         if: matrix.os == 'macos-latest'
-        run: |
-          echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > certificate.p12
-          security create-keychain -p ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-          security import certificate.p12 -k build.keychain -P ${{ secrets.CERTIFICATE_PASSWORD }} -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k ${{ secrets.KEYCHAIN_PASSWORD }} build.keychain
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
       
-      # 빌드 및 배포 (macOS)
+      # macOS 빌드 및 배포
       - name: Build and release for macOS
         if: matrix.os == 'macos-latest'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}  # 변수명 변경
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npm run electron:dist
-
+          # ARM64용 빌드
+          if [ "${{ matrix.arch }}" == "arm64" ]; then
+            npx electron-builder --mac --arm64 --publish always
+          # x64용 빌드
+          else
+            npx electron-builder --mac --x64 --publish always
+          fi
       
-      # 빌드 및 배포 (Windows)
+      # Windows 빌드 및 배포
       - name: Build and release for Windows
         if: matrix.os == 'windows-latest'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN || secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-builder --win --publish always
+          npx electron-builder --win --${{ matrix.arch }} --publish always
       
       # 생성된 아티팩트 업로드
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
+          name: ${{ matrix.os }}-${{ matrix.arch }}-artifacts
           path: |
-            dist/*.dmg
-            dist/*.exe
             releases/*.dmg
             releases/*.exe
+            releases/*.zip
           if-no-files-found: ignore
