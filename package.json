@@ -143,7 +143,7 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "win-${version}-${arch}.${ext}",
+      "artifactName": "coupas-win-${version}-${arch}.${ext}",
       "publisherName": "The Around",
       "verifyUpdateCodeSignature": false,
       "icon": "electron/assets/icon.ico"
@@ -162,47 +162,28 @@
       "displayLanguageSelector": false,
       "unicode": true,
       "runAfterFinish": true,
-      "menuCategory": "디어라운드",
-      "artifactName": "win-installer-${version}.${ext}"
+      "menuCategory": "디어라운드"
     },
     "afterSign": "scripts/notarize.js",
     "mac": {
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg",
+        "zip"
       ],
-      "artifactName": "mac-${version}-${arch}.${ext}",
-      "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist",
-      "icon": "electron/assets/icon.icns",
+      "artifactName": "coupas-mac-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
       "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39",
       "notarize": {
         "teamId": "AJNAL73TT5"
       }
     },
     "dmg": {
-      "background": "electron/assets/dmg-background.png",
       "icon": "electron/assets/icon.icns",
       "iconSize": 100,
-      "window": {
-        "width": 540,
-        "height": 380
-      },
       "contents": [
         {
           "x": 130,
