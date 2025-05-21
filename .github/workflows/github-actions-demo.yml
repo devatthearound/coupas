@@ -31,7 +31,7 @@ jobs:
       - name: Build application
         timeout-minutes: 10  # 빌드 단계 타임아웃
         env:
-          SKIP_NOTARIZATION: true
+          SKIP_NOTARIZATION: false
           NODE_OPTIONS: --max-old-space-size=8192
         run: |
           npm run next:build
