@@ -102,12 +102,14 @@ export class ImageProcessor {
     ratingCount?: number,
     features?: string
   ) {
+    let productImgBuffer; // 변수 선언을 함수 상단으로 이동
+    
     try {
       const backgroundTemplatePath = this.getBackgroundImagePath();
       
       // 출력 디렉토리 확인
       const outputDir = path.dirname(outputPath);
-
+  
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
         console.log('출력 디렉토리 생성:', outputDir);
@@ -117,12 +119,8 @@ export class ImageProcessor {
       const metadata = await image.metadata();
       const width = metadata.width || 1920;
       const height = metadata.height || 1080;
-
+  
       // 상품 이미지 처리 (웹 URL 또는 로컬 파일)
-      let productImgBuffer;
-      
-      // 웹 이미지를 가져와서 버퍼로 변환
-
       try {
         console.log('웹 이미지 다운로드 시도:', productImgPath);
         const response = await fetch(productImgPath);
@@ -135,7 +133,7 @@ export class ImageProcessor {
         console.error('웹 이미지 다운로드 실패:', error);
         throw new Error(`상품 이미지를 가져오는데 실패했습니다: ${error.message || '알 수 없는 오류'}`);
       }
-
+  
       // 상품 이미지 리사이즈
       const productImg = await sharp(productImgBuffer)
         .resize(Math.floor(width * 0.4), Math.floor(height * 0.5), {
@@ -143,7 +141,10 @@ export class ImageProcessor {
           background: { r: 255, g: 255, b: 255, alpha: 0 }
         })
         .toBuffer();
-
+      
+      // 처리 후 원본 버퍼 메모리 해제 (추가된 코드)
+      productImgBuffer = null;
+      
       // 기본 위치 설정
       const defaultPositions = {
         rank: { x: 0.34, y: 0.315, fontSize: 83, color: '#FFFFFF', weight: '900', letterSpacing: -0.3 },
@@ -155,7 +156,7 @@ export class ImageProcessor {
         isNextDayDelivery : { x: 0.79, y: 0.89, fontSize: 47, color: '#FF8B00', weight: '900', letterSpacing: -0.3 },
         isRocket: { x: 0.87, y: 0.96, fontSize: 47, color: '#FF8B00', weight: '900', letterSpacing: -0.3 }
       };
-
+  
       // 한국어에 더 적합한 문자 단위 텍스트 처리
       const maxCharsPerLine = 8; // 한 줄에 표시할 최대 글자 수 (한글 기준)
       const maxLines = 5; // 최대 줄 수
@@ -198,16 +199,11 @@ export class ImageProcessor {
             }
           }
         }
-        
-        // 줄 수에 따라 글꼴 크기 조정
-        // if (nameLines.length > 1) {
-        //   fontSize = Math.max(60, fontSize - (nameLines.length - 1) * 20);
-        // }
       } else {
         // 한 줄에 표시 가능한 짧은 텍스트
         nameLines.push(productName);
       }
-
+  
       // SVG 텍스트 요소 생성
       let nameTextSvg = '';
       const nameBaseY = height * defaultPositions.name.y - ((nameLines.length - 1) * fontSize * 0.7); // 여러 줄일 때 시작 Y 위치 조정
@@ -222,7 +218,7 @@ export class ImageProcessor {
           font-size="${fontSize}"
           style="letter-spacing: ${defaultPositions.name.letterSpacing}px">${line}</text>`;
       });
-
+  
       const generateStarRating = (rating: number, x: number, y: number, starSize: number = 60) => {
         const fullStars = Math.floor(rating);
         const hasHalfStar = rating % 1 >= 0.5;
@@ -245,8 +241,8 @@ export class ImageProcessor {
         }
         return starsHtml;
       };
-
-
+  
+      // 여기 svgText 변수가 정의됩니다
       const svgText = `
         <svg width="${width}" height="${height}">
           <defs>
@@ -332,7 +328,7 @@ export class ImageProcessor {
           style="letter-spacing: ${defaultPositions.isRocket.letterSpacing}px">로켓 배송</text>
           ` : ''}
         </svg>`;
-
+      
       // 이미지 합성
       await image
         .composite([
@@ -348,10 +344,29 @@ export class ImageProcessor {
           }
         ])
         .toFile(outputPath);
-
+        
+      // 작업 완료 후 GC 힌트 (추가된 코드)
+      if (global.gc) {
+        try {
+          global.gc();
+        } catch (e) {
+          console.error('GC 실행 오류:', e);
+        }
+      }
+  
     } catch (error) {
       console.error('이미지 처리 중 오류:', error);
       throw error;
+    } finally {
+      // 명시적으로 큰 변수들 null 처리 (추가된 코드)
+      productImgBuffer = null;
+      if (global.gc) {
+        try {
+          global.gc();
+        } catch (e) {
+          console.error('GC 실행 오류:', e);
+        }
+      }
     }
   }
 

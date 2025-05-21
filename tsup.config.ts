@@ -12,4 +12,7 @@ export default defineConfig({
   external: ["electron", "electron-store"],
   format: ["cjs"],
   bundle: true,
+  target: 'es2017',
+  minify: true,
+  dts: false
 });

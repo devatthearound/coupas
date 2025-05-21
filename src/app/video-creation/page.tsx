@@ -785,7 +785,7 @@ const { user } = useUser();
               </div>
 
               {/* 영상 내보내기 버튼 */}
-              <div className="relative group">
+              {/* <div className="relative group">
                 <button
                   disabled={!generatedVideoUrl}
                   onClick={() => setIsPreviewModalOpen(true)}
@@ -795,7 +795,7 @@ const { user } = useUser();
                 >
                   Youtube 업로드
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

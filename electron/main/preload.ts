@@ -1,5 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
+
+// GC 힌트를 위한 함수 추가
+const triggerGC = () => {
+  if (window.gc) window.gc();
+};
+
+// 주기적 GC 설정
+setInterval(triggerGC, 60000);
+
+// 이벤트 리스너 메모리 관리 추가
+const safeAddListener = (channel: string, callback: (...args: any[]) => void) => {
+  // 기존 리스너 제거 후 새 리스너 추가
+  ipcRenderer.removeAllListeners(channel);
+  ipcRenderer.on(channel, callback);
+};
+
+
 // 콘솔 메시지 리스너 등록
 ipcRenderer.on('console-message', (_, data) => {
   const { type, args, timestamp } = data;

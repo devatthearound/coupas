@@ -10,6 +10,8 @@ import path from 'path';
 import { readFile } from 'fs/promises';
 import { autoUpdater } from 'electron-updater';
 import { TemplateStore, VideoTemplate } from "./templateStore.js";
+import { setupSharpModule } from './sharp-loader';
+import { fork } from 'child_process';
 
 // 기존 console 메서드 캐싱
 const originalConsole = {
@@ -198,14 +200,37 @@ function setupAutoUpdater() {
 }
 
 const createWindow = async () => {
+  // 메모리 해제를 위한 주기적 GC 실행 설정
+  if (global.gc) {
+    setInterval(() => {
+      try {
+        if (typeof global.gc === 'function') {
+          global.gc();
+        }
+      } catch (e) {
+        console.error('GC 실행 오류:', e);
+      }
+    }, 60000); // 60초마다 실행
+  }
+  
   mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: true,
+      // 메모리 관련 최적화 설정 추가
+      backgroundThrottling: false,
+      enableBlinkFeatures: 'PreciseMemoryInfo',
     },
   });
+
+  // 리소스 해제를 위한 추가 이벤트 리스너
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    if (global.gc) global.gc();
+  });
+
 
   mainWindow.on("ready-to-show", () => {
     if (mainWindow) {
@@ -252,6 +277,16 @@ const startNextJSServer = async () => {
     throw error;
   }
 };
+
+// app.whenReady() 바로 앞에 추가
+// V8 메모리 제한 설정 및 GC 노출
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=8192 --expose-gc');
+
+// 메모리 관련 최적화 설정 추가
+app.commandLine.appendSwitch('disable-features', 'BlinkRuntimeCallStats');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-breakpad');
+
 
 app.whenReady().then(() => {
   // 프로토콜 등록을 더 일찍 수행
@@ -327,6 +362,8 @@ app.whenReady().then(() => {
   createWindow().then(() => {
     // 자동 업데이트 설정
     setupAutoUpdater();
+    setupSharpModule();
+
   });
 
 
@@ -396,57 +433,46 @@ ipcMain.handle('combine-videos-and-images', async (
   imageDisplayDuration
 ) => {
   try {
-    console.log('비디오 합성 요청 받음:', {
-      videoTitle,
-      introVideo, 
-      outroVideo,
-      backgroundMusic,
-      backgroundTemplatePath,
-      productInfoCount: Array.isArray(productInfo) ? productInfo.length : 'Not an array',
-      logoPath,
-      outputDirectory,
-      imageDisplayDuration
+    // 자식 프로세스 실행
+    const workerPath = join(__dirname, 'processes', 'videoWorker.js');
+    const child = fork(workerPath, [], {
+      env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=4096' }
     });
     
-    // 파일 존재 여부 확인
-    const checkFile = (path: string, name: string) => {
-      if (!path) {
-        throw new Error(`${name} 경로가 비어있습니다.`);
-      }
-      if (!fs.existsSync(path)) {
-        throw new Error(`${name} 파일을 찾을 수 없습니다: ${path}`);
-      }
-      return true;
-    };
-    
-    // 필수 파일들 체크
-    checkFile(introVideo, '인트로 비디오');
-    checkFile(outroVideo, '아웃로 비디오');
-    checkFile(backgroundMusic, '배경 음악');
-    
-    // // 배경 템플릿 이미지는 선택적일 수 있음
-    // if (backgroundTemplatePath && !fs.existsSync(backgroundTemplatePath)) {
-    //   console.warn(`배경 템플릿 이미지를 찾을 수 없습니다: ${backgroundTemplatePath}`);
-    // }
-    
-    const result = await EnhancedVideoProcessor.combineVideosAndImages(
-      videoTitle,
-      introVideo,
-      outroVideo,
-      backgroundMusic,
-      // backgroundTemplatePath,
-      productInfo,
-      logoPath,
-      outputDirectory,
-      imageDisplayDuration
-    )
-    return result;
+    // 프로세스 간 통신
+    return new Promise((resolve, reject) => {
+      child.on('message', (result) => {
+        resolve(result);
+      });
+      
+      child.on('error', (err) => {
+        reject({ success: false, error: err.message });
+      });
+      
+      child.on('exit', (code) => {
+        if (code !== 0) {
+          reject({ success: false, error: `Worker process exited with code ${code}` });
+        }
+      });
+      
+      // 데이터 전송
+      child.send({
+        videoTitle,
+        introVideo,
+        outroVideo,
+        backgroundMusic,
+        productInfo,
+        logoPath,
+        outputDirectory,
+        imageDisplayDuration
+      });
+    });
   } catch (error) {
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
-    }
+    };
   }
 })
 

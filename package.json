@@ -12,22 +12,20 @@
   "description": "NextJS App with Electron",
   "scripts": {
     "next:dev": "next dev",
-    "next:build": "next build",
+    "next:build": "cross-env NODE_ENV=production next build",
     "next:start": "next start",
     "next:lint": "next lint",
-    "format": "dprint fmt",
-    "postinstall": "electron-builder install-app-deps",
-    "electron:dist": "electron-builder",
-    "electron:build": "tsup",
-    "build": "run-s next:build electron:build",
-    "dist": "run-s build electron:dist",
-    "publish": "run-s build electron:publish",
-    "electron:publish": "electron-builder --publish always",
     "dev": "npm-run-all --parallel electron:dev next:dev",
-    "electron:build_watch": "tsup --watch",
-    "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon",
-    "test:image": "cross-env NODE_ENV='development' node --loader ts-node/esm electron/main/test.ts"
+    "publish": "run-s build electron:publish",
+    "postinstall": "electron-builder install-app-deps",
+    "install-sharp-win": "npm_config_platform=win32 npm_config_arch=x64 npm install sharp",
+    "install-sharp-mac": "npm_config_platform=darwin npm_config_arch=x64 npm install sharp",
+    "install-sharp-all": "npm run install-sharp-win && npm run install-sharp-mac",
+    "electron:build": "tsup --minify --treeshake --clean",
+    "build": "cross-env NODE_ENV=production run-s electron:build next:build",
+    "build-win": "npm run build && electron-builder build --win --publish never",
+    "build-mac": "npm run build && electron-builder build --mac --publish never",
+    "build-all": "npm run build && electron-builder build -mw --publish never"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^3.0.0",
@@ -37,7 +35,7 @@
     "@heroicons/react": "^2.2.0",
     "@next/env": "^14.2.5",
     "axios": "^1.8.1",
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
     "cross-env": "^7.0.3",
     "electron-notarize": "^1.2.2",
     "electron-store": "^8.1.0",
@@ -58,7 +56,7 @@
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.5.2",
-    "sharp": "^0.33.5",
+    "sharp": "^0.34.2",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
@@ -88,7 +86,12 @@
     "productName": "coupas",
     "executableName": "coupas",
     "copyright": "Copyright © 2025 The Around",
-    "asar": true,
+    "buildDependenciesFromSource": true,
+    "npmRebuild": true,
+    "asar": {
+      "smartUnpack": true
+    },
+    "compression": "maximum",
     "publish": [
       {
         "provider": "github",
@@ -104,8 +107,11 @@
       "node_modules/@img",
       "node_modules/next/dist/compiled/@vercel/og",
       "node_modules/sharp",
+      "node_modules/bcrypt",
       "node_modules/ffmpeg-static",
       "node_modules/ffprobe-static",
+      "node_modules/ffmpeg-static/bin/${platform}/${arch}/ffmpeg*",
+      "node_modules/ffprobe-static/bin/${platform}/${arch}/ffprobe*",
       "**\\*.{node,dll}"
     ],
     "extraMetadata": {
@@ -118,7 +124,15 @@
         "to": "app",
         "filter": [
           "!**/.env",
-          "!**/package.json"
+          "!**/package.json",
+          "!**/*.map",
+          "!**/*.md",
+          "!**/node_modules/**/*test*",
+          "!**/node_modules/**/*.d.ts",
+          "!**/node_modules/**/*.md",
+          "!**/node_modules/**/docs/**",
+          "!**/node_modules/**/example/**",
+          "!**/node_modules/**/test/**"
         ]
       },
       {

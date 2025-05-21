@@ -150,16 +150,16 @@ export class EnhancedVideoProcessor {
     backgroundMusic: string,
     // backgroundTemplatePath: string,
     productInfo: {
-      productName: string;      // 상품명
-      productImage: string;     // 상품 이미지
-      productPrice: number;     // 가격
-      rating?: number;          // 평점 (별점) - 선택적
-      ratingCount?: number;     // 평점 갯수 - 선택적
-      features?: string;        // 특징 - 선택적
-      isRocket: boolean;        // 로켓배송 여부
-      isFreeShipping: boolean;  // 무료배송 여부
-      shortUrl: string;        // 상품 링크
-      rank: number;            // 순위
+      productName: string;
+      productImage: string;
+      productPrice: number;
+      rating?: number;
+      ratingCount?: number;
+      features?: string;
+      isRocket: boolean;
+      isFreeShipping: boolean;
+      shortUrl: string;
+      rank: number;
     }[],
     logoPath: string,
     outputDirectory: string,
@@ -167,12 +167,21 @@ export class EnhancedVideoProcessor {
   ) {
     const outputPath = path.join(outputDirectory, `${videoTitle}.mp4`);
     
+    // 처리 과정 기록용 변수들 (추가된 코드)
+    let createdFiles: string[] = [];
+    let inProgress = false;
+    
     return new Promise(async (resolve, reject) => {
       try {
+        inProgress = true;
         const videoFormat = 'mp4';
         const imageFps = 30;
-
+  
         console.log('비디오 처리 시작...');
+        
+        // 메모리 상태 로깅 (추가된 코드)
+        console.log('초기 메모리 사용량:', process.memoryUsage());
+        
         // 임시 디렉토리 경로 생성 및 확인
         const tmpDir = path.join(homedir(), 'Documents', 'Coupas', 'tmp_video_processing');
         console.log('임시 디렉토리 경로:', tmpDir);
@@ -187,26 +196,33 @@ export class EnhancedVideoProcessor {
           }
         } catch (dirError) {
           console.error('임시 디렉토리 생성 중 오류:', dirError);
+          
+          // 오류 발생 시 정리 함수 호출 (추가된 코드)
+          this.cleanupAndExit(createdFiles);
+          
           reject({ success: false, error: dirError });
           return;
         }
-
+  
         // 첫 번째 비디오 메타데이터 가져오기
         const video1Metadata = await VideoProcessor.getVideoMetadata(introVideo);
         const video1Dimensions = this.extractVideoDimensions(video1Metadata);
         console.log('비디오1 크기:', video1Dimensions);
-
+  
         // 두 번째 비디오 메타데이터 가져오기
         const video2Metadata = await VideoProcessor.getVideoMetadata(outroVideo);
         const video2Dimensions = this.extractVideoDimensions(video2Metadata);
         console.log('비디오2 크기:', video2Dimensions);
-
+  
         // 함수 사용 예시
         const productsList = productInfo;
-
+  
         const outputDir = path.join(homedir(), 'Documents', 'Coupas', 'tmp_product_details');
         console.log('제품 이미지 출력 디렉토리:', outputDir);
-
+        
+        // 임시 파일 기록 (추가된 코드)
+        createdFiles.push(outputDir);
+  
         try {
           if (!fs.existsSync(outputDir)) {
             fs.mkdirSync(outputDir, { recursive: true });
@@ -216,10 +232,14 @@ export class EnhancedVideoProcessor {
           }
         } catch (outDirError) {
           console.error('제품 이미지 출력 디렉토리 생성 중 오류:', outDirError);
+          
+          // 오류 발생 시 정리 함수 호출 (추가된 코드)
+          this.cleanupAndExit(createdFiles);
+          
           reject({ success: false, error: outDirError });
           return;
         }
- 
+   
         // 함수 호출 - 이미지 생성 부분
         console.log('제품 이미지 생성 시작...');
         let productImagePaths;
@@ -231,25 +251,42 @@ export class EnhancedVideoProcessor {
             outputDir
           );
           console.log('생성된 제품 이미지 경로들:', productImagePaths);
+          
+          // 임시 파일 기록 (추가된 코드)
+          if (productImagePaths && Array.isArray(productImagePaths)) {
+            createdFiles = createdFiles.concat(productImagePaths);
+          }
+          
         } catch (imgError) {
           console.error('제품 이미지 생성 중 오류:', imgError);
+          
+          // 오류 발생 시 정리 함수 호출 (추가된 코드)
+          this.cleanupAndExit(createdFiles);
+          
           reject({ success: false, error: imgError });
           return;
         }
-
+  
         // 생성된 이미지 존재 확인
         if (!productImagePaths || productImagePaths.length === 0) {
           const error = new Error('제품 이미지가 생성되지 않았습니다');
           console.error(error);
+          
+          // 오류 발생 시 정리 함수 호출 (추가된 코드)
+          this.cleanupAndExit(createdFiles);
+          
           reject({ success: false, error });
           return;
         }
-
+  
         // 이미지를 비디오로 변환 - 비디오 크기에 맞춰서
         console.log('이미지를 비디오로 변환 중...');
         const targetWidth = video1Dimensions.width;
         const targetHeight = video1Dimensions.height;
         const imageVideoPath = path.join(tmpDir, `image_sequence.${videoFormat}`);
+        
+        // 임시 파일 기록 (추가된 코드)
+        createdFiles.push(imageVideoPath);
         
         try {
           await this.createVideoFromImages(
@@ -264,17 +301,21 @@ export class EnhancedVideoProcessor {
           console.log('이미지 시퀀스 비디오 생성 완료:', imageVideoPath);
         } catch (videoError) {
           console.error('이미지를 비디오로 변환 중 오류:', videoError);
+          
+          // 오류 발생 시 정리 함수 호출 (추가된 코드)
+          this.cleanupAndExit(createdFiles);
+          
           reject({ success: false, error: videoError });
           return;
         }
-
+  
         // 절대 경로로 변환
         const absolutePaths = [
           path.resolve(introVideo),
           path.resolve(imageVideoPath),
           path.resolve(outroVideo)
         ];
-
+  
         // 파일 존재 여부 확인
         for (const filePath of absolutePaths) {
           if (!fs.existsSync(filePath)) {
@@ -282,11 +323,14 @@ export class EnhancedVideoProcessor {
           }
           console.log('파일 확인됨:', filePath);
         }
-
+  
         // 중간 파일 경로 생성
         const normalizedPath1 = path.join(tmpDir, 'video1_normalized.mp4');
         const normalizedPath2 = path.join(tmpDir, 'video2_normalized.mp4');
         const normalizedPathImg = path.join(tmpDir, 'image_normalized.mp4');
+        
+        // 임시 파일 기록 (추가된 코드)
+        createdFiles.push(normalizedPath1, normalizedPath2, normalizedPathImg);
         
         // 비디오 1 정규화 (코덱, 해상도 통일)
         await this.normalizeVideo(absolutePaths[0], normalizedPath1, targetWidth, targetHeight);
@@ -296,16 +340,33 @@ export class EnhancedVideoProcessor {
         
         // 비디오 2 정규화
         await this.normalizeVideo(absolutePaths[2], normalizedPath2, targetWidth, targetHeight);
-
+  
         // 파일 리스트 생성
         const fileListPath = path.join(tmpDir, 'filelist.txt');
+        
+        // 임시 파일 기록 (추가된 코드)
+        createdFiles.push(fileListPath);
+        
         const fileListContent = [
           `file '${normalizedPath1.replace(/'/g, "'\\''")}'`,
           `file '${normalizedPathImg.replace(/'/g, "'\\''")}'`,
           `file '${normalizedPath2.replace(/'/g, "'\\''")}'`
         ].join('\n');
         fs.writeFileSync(fileListPath, fileListContent);
-
+  
+        // 메모리 사용량 체크 (추가된 코드)
+        console.log('병합 전 메모리 사용량:', process.memoryUsage());
+        
+        // 주기적인 GC 실행 (추가된 코드)
+        if (global.gc) {
+          try {
+            global.gc();
+            console.log('GC 실행 후 메모리 사용량:', process.memoryUsage());
+          } catch (e) {
+            console.error('GC 실행 오류:', e);
+          }
+        }
+  
         // 최종 concat 수행 (파일 기반 concat - 더 안정적)
         const command = ffmpeg()
           .input(fileListPath)
@@ -316,7 +377,7 @@ export class EnhancedVideoProcessor {
             '-movflags', '+faststart'
           ])
           .output(outputPath);
-
+  
         // 로그 및 진행 상황 추가
         command
           .on('start', (commandLine) => {
@@ -324,46 +385,42 @@ export class EnhancedVideoProcessor {
           })
           .on('progress', (progress) => {
             console.log('최종 처리 중...', progress);
+            
+            // 추가된 코드: 진행률 10% 단위로 메모리 사용량 로깅
+            if (progress.percent && Math.floor(progress.percent) % 10 === 0) {
+              console.log(`${Math.floor(progress.percent)}% 완료, 메모리 사용량:`, process.memoryUsage());
+            }
           })
           .on('end', () => {
             console.log('비디오 처리 완료');
             console.log('최종 출력 경로:', outputPath);
             
+            inProgress = false;
+            
             // 이미지 시퀀스 임시 파일 경로도 확인해서 추가
             const imageSequenceTempPath = imageVideoPath.replace(/\.\w+$/, '_temp.mp4');
+            if (fs.existsSync(imageSequenceTempPath)) {
+              createdFiles.push(imageSequenceTempPath);
+            }
             
             // 임시 비디오 파일 정리
-            this.cleanupTempFiles([
-              normalizedPath1,
-              normalizedPath2,
-              normalizedPathImg,
-              imageVideoPath,
-              imageSequenceTempPath,
-              fileListPath
-            ]);
+            this.cleanupTempFiles(createdFiles);
             
-            // tmp_product_details 폴더 정리
-            if (fs.existsSync(outputDir)) {
+            // 명시적 GC 실행 (추가된 코드)
+            if (global.gc) {
               try {
-                fs.rmSync(outputDir, { recursive: true, force: true });
-                console.log('제품 이미지 임시 폴더 삭제:', outputDir);
-              } catch (cleanupErr) {
-                console.warn('제품 이미지 임시 폴더 삭제 실패:', cleanupErr);
+                global.gc();
+                console.log('작업 완료 후 메모리 사용량:', process.memoryUsage());
+              } catch (e) {
+                console.error('GC 실행 오류:', e);
               }
             }
             
             // 파일이 실제로 생성되었는지 확인
             if (fs.existsSync(outputPath)) {
-              console.log('최종 출력 경로:', outputPath);
-              console.log({ 
-                success: true, 
-                gaeun : true,
-                outputPath: outputPath // 명시적으로 outputPath 포함
-              })
               resolve({ 
                 success: true, 
-                gaeun : true,
-                outputPath: outputPath // 명시적으로 outputPath 포함
+                outputPath: outputPath
               });
             } else {
               reject({ 
@@ -377,15 +434,42 @@ export class EnhancedVideoProcessor {
             console.error('FFmpeg 오류:', err);
             console.error('FFmpeg 표준 출력:', stdout);
             console.error('FFmpeg 오류 출력:', stderr);
+            
+            inProgress = false;
+            
+            // 오류 발생 시 정리 함수 호출 (추가된 코드)
+            this.cleanupAndExit(createdFiles);
+            
             reject({ success: false, error: new Error(`FFmpeg 오류: ${err.message}\n${stderr}`) });
           });
-
+  
         command.run();
       } catch (error) {
         console.error('처리 중 오류 발생:', error);
+        
+        // 진행 중이었다면 정리 (추가된 코드)
+        if (inProgress) {
+          this.cleanupAndExit(createdFiles);
+        }
+        
         reject({ success: false, error });
       }
     });
+  }
+  
+  // 추가: cleanupAndExit 메서드 (클래스 내에 추가)
+  static cleanupAndExit(filePaths: string[]) {
+    this.cleanupTempFiles(filePaths);
+    
+    // 메모리 해제 시도
+    if (global.gc) {
+      try {
+        global.gc();
+        console.log('정리 후 메모리 사용량:', process.memoryUsage());
+      } catch (e) {
+        console.error('GC 실행 오류:', e);
+      }
+    }
   }
 
   /**
@@ -450,8 +534,14 @@ static createVideoFromImages(
   targetHeight = 1080
 ) {
   return new Promise(async (resolve, reject) => {
+    // 임시 파일 관리를 위한 배열 (추가된 코드)
+    const tempFiles = [];
+    
     try {
       console.log(`타겟 크기: ${targetWidth}x${targetHeight}`);
+      
+      // 메모리 사용량 로깅 (추가된 코드)
+      console.log('이미지→비디오 시작 메모리:', process.memoryUsage());
       
       // 전체 비디오 길이 계산
       const totalVideoDuration = imagePaths.length * duration;
@@ -459,25 +549,114 @@ static createVideoFromImages(
       
       // 임시 파일 경로 (무음 비디오)
       const tempVideoPath = outputPath.replace(/\.\w+$/, '_temp.mp4');
+      tempFiles.push(tempVideoPath);
       
-      // 1단계: 이미지만으로 무음 비디오 생성
-      await this.createSilentVideo(imagePaths, tempVideoPath, duration, fps, targetWidth, targetHeight);
+      // 청크 단위로 처리 (추가된 코드)
+      const MAX_CHUNK_SIZE = 10; // 한 번에 최대 10개 이미지만 처리
+      
+      if (imagePaths.length > MAX_CHUNK_SIZE) {
+        console.log(`이미지가 ${imagePaths.length}개로 많아 ${MAX_CHUNK_SIZE}개씩 청크로 나누어 처리합니다.`);
+        
+        // 청크별 임시 비디오 경로 생성
+        const chunkVideoPaths = [];
+        
+        // 청크 단위로 처리
+        for (let i = 0; i < imagePaths.length; i += MAX_CHUNK_SIZE) {
+          const chunkImages = imagePaths.slice(i, Math.min(i + MAX_CHUNK_SIZE, imagePaths.length));
+          const chunkVideoPath = `${tempVideoPath.replace(/\.\w+$/, '')}_chunk_${i}.mp4`;
+          chunkVideoPaths.push(chunkVideoPath);
+          tempFiles.push(chunkVideoPath);
+          
+          console.log(`청크 ${i / MAX_CHUNK_SIZE + 1}/${Math.ceil(imagePaths.length / MAX_CHUNK_SIZE)} 처리 중 (${chunkImages.length}개 이미지)...`);
+          
+          // 각 청크별로 무음 비디오 생성
+          await this.createSilentVideo(
+            chunkImages,
+            chunkVideoPath,
+            duration,
+            fps,
+            targetWidth,
+            targetHeight
+          );
+          
+          // 청크 처리 후 메모리 해제 (추가된 코드)
+          if (global.gc) {
+            try {
+              global.gc();
+              console.log(`청크 ${i / MAX_CHUNK_SIZE + 1} 처리 후 메모리:`, process.memoryUsage());
+            } catch (e) {
+              console.error('GC 실행 오류:', e);
+            }
+          }
+        }
+        
+        // 청크 비디오 합치기
+        if (chunkVideoPaths.length > 1) {
+          console.log('청크 비디오 합치는 중...');
+          
+          // 임시 파일 리스트 생성
+          const chunkListPath = `${tempVideoPath.replace(/\.\w+$/, '')}_chunks.txt`;
+          tempFiles.push(chunkListPath);
+          
+          const chunkListContent = chunkVideoPaths
+            .map(p => `file '${p.replace(/'/g, "'\\''")}'`)
+            .join('\n');
+          
+          fs.writeFileSync(chunkListPath, chunkListContent);
+          
+          // ffmpeg로 청크 비디오 합치기
+          await new Promise((resolveChunk, rejectChunk) => {
+            ffmpeg()
+              .input(chunkListPath)
+              .inputOptions(['-f', 'concat', '-safe', '0'])
+              .outputOptions(['-c', 'copy'])
+              .output(tempVideoPath)
+              .on('end', resolveChunk)
+              .on('error', rejectChunk)
+              .run();
+          });
+          
+          console.log('청크 비디오 합치기 완료');
+        } else if (chunkVideoPaths.length === 1) {
+          // 청크가 하나뿐이라면 그냥 복사
+          fs.copyFileSync(chunkVideoPaths[0], tempVideoPath);
+        }
+      } else {
+        // 이미지가 적은 경우 기존 방식으로 처리
+        await this.createSilentVideo(
+          imagePaths,
+          tempVideoPath,
+          duration,
+          fps,
+          targetWidth,
+          targetHeight
+        );
+      }
       
       // 2단계: 무음 비디오에 오디오 추가
       await this.addAudioToVideo(tempVideoPath, bgmPath, outputPath, totalVideoDuration);
       
-      // 임시 파일 삭제 - 주석 해제
-      try {
-        fs.unlinkSync(tempVideoPath);
-        console.log(`임시 파일 삭제: ${tempVideoPath}`);
-      } catch (e: any) {
-        console.warn(`임시 파일 삭제 실패: ${e.message}`);
+      // 임시 파일 정리
+      this.cleanupTempFiles(tempFiles);
+      
+      // 최종 메모리 사용량 체크 (추가된 코드)
+      if (global.gc) {
+        try {
+          global.gc();
+          console.log('이미지→비디오 완료 후 메모리:', process.memoryUsage());
+        } catch (e) {
+          console.error('GC 실행 오류:', e);
+        }
       }
       
       console.log('이미지 시퀀스 처리 완료');
       resolve(void 0);
     } catch (error) {
       console.error('이미지 처리 중 오류:', error);
+      
+      // 오류 발생 시에도 임시 파일 정리
+      this.cleanupTempFiles(tempFiles);
+      
       reject(error);
     }
   });

@@ -136,7 +136,7 @@ export function VideoPreviewModal({
         </div>
 
         {/* Upload Settings */}
-        <div className="p-4 border-t border-gray-700">
+        {/* <div className="p-4 border-t border-gray-700">
           <h4 className="text-lg font-semibold text-white mb-4">업로드 설정</h4>
           <div className="space-y-4">
             <div>
@@ -171,17 +171,17 @@ export function VideoPreviewModal({
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Action Buttons */}
-        <div className="p-4 border-t border-gray-700 flex justify-end gap-4">
+        {/* <div className="p-4 border-t border-gray-700 flex justify-end gap-4">
           <button
             onClick={handleUpload}
             className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
           >
             유튜브 업로드
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/app/lib/db';
 import { verifyToken } from '@/app/utils/jwt';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function PATCH(req: NextRequest) {
   try {
