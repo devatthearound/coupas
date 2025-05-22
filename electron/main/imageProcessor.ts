@@ -407,7 +407,7 @@ export class ImageProcessor {
           videoTitle,
           product.productName,
           product.productPrice.toLocaleString(),
-          product.rank,
+          productsList.length - i,
           product.isRocket || false,
           product.discountRate || 0,
           product.rating || 0,
