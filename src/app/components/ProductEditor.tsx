@@ -9,7 +9,7 @@ type ProductData = {
     isRocket: boolean;
     productId: number;
     productImage: string;
-    productName: string;
+    productName: string; 
     productPrice: number;
     productUrl: string;
     shortUrl: string;
@@ -20,9 +20,11 @@ type ProductData = {
     discountRate: number;
 }       
 function ProductEditor({ 
+    index,
     products, 
     onChange 
 }: { 
+    index: number,
     products: ProductData, 
     onChange: (products: ProductData) => void 
 }) {
@@ -56,7 +58,7 @@ function ProductEditor({
                                 />
                             </div>
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                {products.rank}순위: {products.productName || '상품명 미입력'}
+                                {index}순위: {products.productName || '상품명 미입력'}
                             </span>
                             <span className="text-sm text-gray-500">
                                 {products.productPrice?.toLocaleString()}원
