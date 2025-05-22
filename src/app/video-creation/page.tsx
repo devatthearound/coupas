@@ -369,8 +369,10 @@ const { user } = useUser();
     const productsParam = searchParams.get('products');
     const searchQuery = sessionStorage.getItem('searchQuery');
     if (productsParam) {
+      console.log('productsParam', productsParam);
       try {
         const decodedProducts = JSON.parse(decodeURIComponent(productsParam));
+        console.log('decodedProducts', decodedProducts);
         setSelectedProducts(decodedProducts);
         setVideoTitle(searchQuery || '');
       } catch (error) {
@@ -740,6 +742,7 @@ const { user } = useUser();
                 {selectedProducts.map((product, index) => (
                   <ProductEditor
                     key={product.productId}
+                    index={index + 1}
                     products={product}
                     onChange={(updatedProduct) => {
                       const newProducts = [...selectedProducts];
