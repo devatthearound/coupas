@@ -118,7 +118,8 @@
         "to": "app",
         "filter": [
           "!**/.env",
-          "!**/package.json"
+          "!**/package.json",
+          "!**/md/**"
         ]
       },
       {
