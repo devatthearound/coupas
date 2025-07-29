@@ -11,6 +11,8 @@ import { readFile } from 'fs/promises';
 import { autoUpdater } from 'electron-updater';
 import { TemplateStore, VideoTemplate } from "./templateStore.js";
 
+console.log("일렉트론 메인 프로세스가 시작되었습니다.");
+
 // 기존 console 메서드 캐싱
 const originalConsole = {
   log: console.log,
@@ -198,37 +200,75 @@ function setupAutoUpdater() {
 }
 
 const createWindow = async () => {
+  console.log("윈도우 생성을 시작합니다...");
+  
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1024,
+    height: 768,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
-      nodeIntegration: true,
+      nodeIntegration: false, // 보안을 위해 false로 변경
+      contextIsolation: true, // contextBridge 사용을 위해 true로 변경
+      webSecurity: false, // 로컬 파일 접근을 위해 필요
+      allowRunningInsecureContent: true,
     },
+    show: false, // 처음에는 숨겨진 상태로 생성
   });
 
+  console.log("윈도우가 생성되었습니다.");
+
   mainWindow.on("ready-to-show", () => {
+    console.log("윈도우가 표시될 준비가 되었습니다.");
     if (mainWindow) {
       mainWindow.show();
       setupLogMonitoring(mainWindow);  // 로그 모니터링 설정
       // 콘솔 래핑 초기화
       wrapConsole();
+      console.log("메인 프로세스 콘솔 리디렉션이 활성화되었습니다.");
+      
+      // 개발 모드에서 개발자 도구 자동 열기
+      if (is.dev) {
+        console.log("개발 모드: 개발자 도구를 엽니다.");
+        mainWindow.webContents.openDevTools();
+      }
     }
   });
 
+  mainWindow.on("closed", () => {
+    console.log("메인 윈도우가 닫혔습니다.");
+    mainWindow = null;
+  });
+
   const loadURL = async () => {
+    console.log("URL 로딩을 시작합니다...");
     if (is.dev) {
-      mainWindow?.loadURL("http://localhost:3000");
+      console.log("개발 모드: localhost:3000으로 연결합니다.");
+      try {
+        await mainWindow?.loadURL("http://localhost:3000");
+        console.log("개발 서버 연결 성공");
+      } catch (error) {
+        console.error("개발 서버 연결 실패:", error);
+        // 포트 3001도 시도
+        try {
+          console.log("포트 3001로 재시도합니다.");
+          await mainWindow?.loadURL("http://localhost:3001");
+          console.log("포트 3001 연결 성공");
+        } catch (error2) {
+          console.error("포트 3001 연결도 실패:", error2);
+        }
+      }
     } else {
       try {
         port = await startNextJSServer();
-        mainWindow?.loadURL(`http://localhost:${port}`);
+        console.log("Next.js server started on port:", port);
+        await mainWindow?.loadURL(`http://localhost:${port}`);
+        console.log("프로덕션 서버 연결 성공");
       } catch (error) {
       }
     }
   };
 
-  loadURL();
+  await loadURL();
   return mainWindow;
 };
 
@@ -254,9 +294,12 @@ const startNextJSServer = async () => {
 };
 
 app.whenReady().then(() => {
+  console.log("앱이 준비되었습니다.");
+  
   // 프로토콜 등록을 더 일찍 수행
   if (!app.isDefaultProtocolClient('coupas-auth')) {
     app.setAsDefaultProtocolClient('coupas-auth');
+    console.log("프로토콜이 등록되었습니다.");
   }
 
   protocol.handle('coupas-auth', async (request) => {
@@ -274,6 +317,21 @@ app.whenReady().then(() => {
           });
           mainWindow.focus();
           return new Response('인증 성공');
+        }
+      } else if (url.pathname === '/google-auth/success') {
+        const googleToken = url.searchParams.get('google_token');
+        const accessToken = url.searchParams.get('access_token');
+        
+        console.log('구글 인증 성공:', { googleToken, accessToken });
+        
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('google-auth-success', { 
+            googleToken, 
+            accessToken,
+            success: true 
+          });
+          mainWindow.focus();
+          return new Response('구글 인증 성공');
         }
       }
 
@@ -309,6 +367,21 @@ app.whenReady().then(() => {
           });
           mainWindow.focus();
         }
+      } else if (parsedUrl.protocol === 'coupas-auth:' && 
+                 (parsedUrl.pathname === '/google-auth/success' || parsedUrl.pathname === 'google-auth/success')) {
+        const googleToken = parsedUrl.searchParams.get('google_token');
+        const accessToken = parsedUrl.searchParams.get('access_token');
+        
+        console.log('구글 인증 성공 (macOS):', { googleToken, accessToken });
+        
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('google-auth-success', { 
+            googleToken, 
+            accessToken,
+            success: true 
+          });
+          mainWindow.focus();
+        }
       }
 
       if (parsedUrl.protocol === 'coupas-auth:' && 
@@ -325,8 +398,11 @@ app.whenReady().then(() => {
   
 
   createWindow().then(() => {
+    console.log("윈도우 생성이 완료되었습니다.");
     // 자동 업데이트 설정
     setupAutoUpdater();
+  }).catch((error) => {
+    console.error("윈도우 생성 중 오류:", error);
   });
 
 
@@ -336,11 +412,46 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  console.log("모든 윈도우가 닫혔습니다.");
+  if (process.platform !== "darwin") {
+    console.log("앱을 종료합니다.");
+    app.quit();
+  }
+});
+
+// 앱 종료 전 이벤트
+app.on("before-quit", (event) => {
+  console.log("앱이 종료되려고 합니다.");
+});
+
+// 앱이 비정상적으로 종료되는 것을 방지
+process.on('uncaughtException', (error) => {
+  console.error('처리되지 않은 예외:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('처리되지 않은 Promise 거부:', reason, promise);
+});
+
+app.on('activate', () => {
+  console.log('App activated');
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
 
 ipcMain.on('message', async (event, arg) => {
   event.reply('message', `${arg} World!`)
+})
+
+// 구글 인증 성공 이벤트 핸들러
+ipcMain.on('google-auth-success', (event) => {
+  console.log('구글 인증 성공 이벤트 수신');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    // 메인 윈도우에 구글 인증 성공을 알림
+    mainWindow.webContents.send('google-auth-success', { success: true });
+    console.log('메인 윈도우에 구글 인증 성공 전송');
+  }
 })
 
 
@@ -393,7 +504,8 @@ ipcMain.handle('combine-videos-and-images', async (
   productInfo,
   logoPath,
   outputDirectory,
-  imageDisplayDuration
+  imageDisplayDuration,
+  fileName
 ) => {
   try {
     console.log('비디오 합성 요청 받음:', {
@@ -438,7 +550,8 @@ ipcMain.handle('combine-videos-and-images', async (
       productInfo,
       logoPath,
       outputDirectory,
-      imageDisplayDuration
+      imageDisplayDuration,
+      fileName
     )
     return result;
   } catch (error) {
@@ -452,33 +565,73 @@ ipcMain.handle('combine-videos-and-images', async (
 
 ipcMain.handle('upload-video', async (event, auth, title, description, tags, videoFilePath, thumbFilePath) => {
   try {
+    console.log('🚀 === upload-video IPC 핸들러 호출 ===');
+    console.log('📝 제목:', title);
+    console.log('📋 설명:', description);
+    console.log('🏷️ 태그:', tags);
+    console.log('📹 비디오 파일 경로:', videoFilePath);
+    console.log('🖼️ 썸네일 파일 경로:', thumbFilePath);
+    console.log('🔑 인증 객체 타입:', typeof auth);
+    
     const result = await YouTubeUploader.uploadVideo(auth, title, description, tags, videoFilePath, thumbFilePath);
+    console.log('✅ YouTubeUploader 결과:', result);
+    
+    // 결과를 그대로 반환 (success/error 정보 포함)
     return result;
   } catch (error) {
+    console.error('❌ upload-video 핸들러에서 오류 발생:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 })
 
 ipcMain.handle('open-external', async (_, url) => {
-  await shell.openExternal(url);
+  console.log('🌐 External URL 열기 요청:', url);
+  try {
+    await shell.openExternal(url);
+    console.log('✅ External URL 열기 성공:', url);
+  } catch (error) {
+    console.error('❌ External URL 열기 실패:', error);
+    throw error;
+  }
 });
 
 ipcMain.handle('read-file-as-data-url', async (_, filePath) => {
   try {
+    console.log('파일 읽기 시도:', filePath);
+    
+    // 파일 존재 여부 확인
+    const fs = await import('fs');
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`파일이 존재하지 않습니다: ${filePath}`);
+    }
+    
     const buffer = await readFile(filePath);
+    console.log('파일 크기:', buffer.length, 'bytes');
+    
+    // 파일 크기 제한 (100MB)
+    if (buffer.length > 100 * 1024 * 1024) {
+      throw new Error('파일이 너무 큽니다 (100MB 초과)');
+    }
+    
     const base64 = buffer.toString('base64');
-    return `data:video/mp4;base64,${base64}`;
+    const dataUrl = `data:video/mp4;base64,${base64}`;
+    console.log('Data URL 생성 완료, 길이:', dataUrl.length);
+    
+    return dataUrl;
   } catch (error) {
     throw error;
   }
 });
 
 // 싱글 인스턴스 보장
+console.log("싱글 인스턴스 잠금을 요청합니다...");
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
+  console.log("앱이 이미 실행 중입니다. 종료합니다.");
   app.quit();
 } else {
+  console.log("싱글 인스턴스 잠금을 획득했습니다.");
   app.on('second-instance', (event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
@@ -489,13 +642,25 @@ if (!gotTheLock) {
       if (protocolUrl) {
         try {
           const url = new URL(protocolUrl);
-          const accessToken = url.searchParams.get('coupas_access_token');
-          const refreshToken = url.searchParams.get('coupas_refresh_token');
           
-          mainWindow.webContents.send('auth-callback', { 
-            accessToken, 
-            refreshToken 
-          });
+          if (url.pathname.includes('google-auth/success')) {
+            const googleToken = url.searchParams.get('google_token');
+            const accessToken = url.searchParams.get('access_token');
+            
+            mainWindow.webContents.send('google-auth-success', { 
+              googleToken, 
+              accessToken,
+              success: true 
+            });
+          } else if (url.pathname.includes('login')) {
+            const accessToken = url.searchParams.get('coupas_access_token');
+            const refreshToken = url.searchParams.get('coupas_refresh_token');
+            
+            mainWindow.webContents.send('auth-callback', { 
+              accessToken, 
+              refreshToken 
+            });
+          }
         } catch (error) {
           console.error('URL 파싱 중 오류:', error);
         }

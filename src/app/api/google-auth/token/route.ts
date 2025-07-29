@@ -1,186 +1,144 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/app/lib/db';
 import { OAuth2Client } from 'google-auth-library';
+import fs from 'fs';
+import path from 'path';
 
+// Environment variables
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/google-auth/callback';
 
-// 구글 인증 정보 저장
-export async function POST(request: NextRequest) {
-    const userId = request.headers.get('x-user-id');
+// 파일 기반 저장소
+const DATA_FILE = path.join(process.cwd(), 'data', 'google-auth.json');
 
-    if (!userId) {
-        return NextResponse.json(
-            { message: '사용자 ID가 필요합니다.' },
-            { status: 401 }
-        );
-    }
+const ensureDataDir = () => {
+  const dataDir = path.dirname(DATA_FILE);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+};
 
-    try {
-        const { accessToken, refreshToken, scope, tokenType, expiryDate } = await request.json();
+const readGoogleTokens = () => {
+  ensureDataDir();
+  if (!fs.existsSync(DATA_FILE)) {
+    return {};
+  }
+  try {
+    const data = fs.readFileSync(DATA_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Google 토큰 파일 읽기 오류:', error);
+    return {};
+  }
+};
 
-        if (!accessToken || !refreshToken || !scope || !tokenType || !expiryDate) {
-            return NextResponse.json(
-                { message: '구글 인증 정보가 누락되었습니다.' },
-                { status: 400 }
-            );
-        }
-
-        const client = await pool.connect();
-
-        try {
-            await client.query('BEGIN');
-
-            // 기존 인증 정보 비활성화
-            await client.query(
-                `UPDATE google_auth 
-                SET is_active = false, updated_at = CURRENT_TIMESTAMP 
-                WHERE user_id = $1 AND is_active = true`,
-                [userId]
-            );
-
-            // 새 인증 정보 저장
-            await client.query(
-                `INSERT INTO google_auth 
-                (user_id, access_token, refresh_token, scope, token_type, expiry_date) 
-                VALUES ($1, $2, $3, $4, $5, $6)`,
-                [userId, accessToken, refreshToken, scope, tokenType, new Date(expiryDate)]
-            );
-
-            await client.query('COMMIT');
-
-            return NextResponse.json({
-                message: '구글 인증 정보가 성공적으로 저장되었습니다.'
-            });
-
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('invalid_grant')) {
-                return NextResponse.json(
-                    { message: '인증 코드가 유효하지 않거나 만료되었습니다.' },
-                    { status: 400 }
-                );
-            }
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
-
-    } catch (error) {
-        console.error('구글 인증 정보 저장 중 오류:', error);
-        return NextResponse.json(
-            { message: '서버 오류가 발생했습니다.' },
-            { status: 500 }
-        );
-    }
-}
+const writeGoogleTokens = (tokens: any) => {
+  ensureDataDir();
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(tokens, null, 2));
+  } catch (error) {
+    console.error('Google 토큰 파일 쓰기 오류:', error);
+    throw error;
+  }
+};
 
 // 토큰 갱신 함수
-async function refreshAccessToken(refreshToken: string) {
-    const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET);
-    oauth2Client.setCredentials({
-        refresh_token: refreshToken
+const refreshAccessToken = async (refreshToken: string) => {
+  try {
+    const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    return credentials;
+  } catch (error) {
+    console.error('토큰 갱신 오류:', error);
+    throw error;
+  }
+};
+
+export async function GET() {
+  try {
+    const tokens = readGoogleTokens();
+    
+    if (!tokens.access_token) {
+      return NextResponse.json({ error: '인증되지 않음' }, { status: 401 });
+    }
+
+    // 토큰 만료 확인
+    if (tokens.expires_at && Date.now() > tokens.expires_at) {
+      if (tokens.refresh_token) {
+        try {
+          // 토큰 갱신 시도
+          const newTokens = await refreshAccessToken(tokens.refresh_token);
+          
+          const updatedTokenData = {
+            ...tokens,
+            access_token: newTokens.access_token,
+            expires_at: newTokens.expiry_date || (Date.now() + 3600000),
+            updated_at: new Date().toISOString()
+          };
+          
+          writeGoogleTokens(updatedTokenData);
+          
+          return NextResponse.json({
+            success: true,
+            access_token: newTokens.access_token,
+            refresh_token: newTokens.refresh_token || tokens.refresh_token, // 기존 refresh_token 유지
+            expires_at: newTokens.expiry_date
+          });
+        } catch (refreshError) {
+          console.error('토큰 갱신 실패:', refreshError);
+          return NextResponse.json({ error: '토큰 갱신 실패' }, { status: 401 });
+        }
+      } else {
+        return NextResponse.json({ error: '토큰 만료됨' }, { status: 401 });
+      }
+    }
+
+    // 유효한 토큰 반환
+    return NextResponse.json({
+      success: true,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_at: tokens.expires_at
     });
 
-    try {
-        const { credentials } = await oauth2Client.refreshAccessToken();
-        return {
-            accessToken: credentials.access_token,
-            expiryDate: credentials.expiry_date
-        };
-    } catch (error) {
-        console.error('토큰 갱신 중 오류:', error);
-        throw error;
-    }
+  } catch (error) {
+    console.error('토큰 조회 오류:', error);
+    return NextResponse.json({ error: '토큰 조회에 실패했습니다.' }, { status: 500 });
+  }
 }
 
-// 구글 인증 정보 조회
-export async function GET(request: NextRequest) {
-    const userId = request.headers.get('x-user-id');
-
-    if (!userId) {
-        return NextResponse.json(
-            { message: '사용자 ID가 필요합니다.' },
-            { status: 401 }
-        );
+export async function POST(request: NextRequest) {
+  try {
+    const { googleToken } = await request.json();
+    
+    if (!googleToken) {
+      return NextResponse.json(
+        { error: 'Google 토큰이 필요합니다.' },
+        { status: 400 }
+      );
     }
 
-    const client = await pool.connect();
-    try {
-        const result = await client.query(
-            `SELECT access_token, refresh_token, scope, token_type, expiry_date 
-            FROM google_auth 
-            WHERE user_id = $1 AND is_active = true`,
-            [userId]
-        );
+    // 토큰 저장
+    const tokenData = {
+      access_token: googleToken,
+      saved_at: new Date().toISOString(),
+      source: 'external'
+    };
+    
+    writeGoogleTokens(tokenData);
 
-        if (result.rows.length === 0) {
-            return NextResponse.json(
-                { message: '구글 인증 정보가 없습니다.' },
-                { status: 404 }
-            );
-        }
+    return NextResponse.json({
+      success: true,
+      message: '토큰이 저장되었습니다.'
+    });
 
-        const authInfo = result.rows[0];
-        const now = new Date();
-        const expiryDate = new Date(authInfo.expiry_date);
-
-        // 토큰이 만료되었거나 곧 만료될 예정인 경우 (5분 이내)
-        if (expiryDate.getTime() - now.getTime() < 300000) {
-            try {
-                const { accessToken, expiryDate: newExpiryDate } = 
-                    await refreshAccessToken(authInfo.refresh_token);
-
-                // 새로운 액세스 토큰으로 업데이트
-                await client.query(
-                    `UPDATE google_auth 
-                    SET access_token = $1, expiry_date = $2, updated_at = CURRENT_TIMESTAMP 
-                    WHERE user_id = $3 AND is_active = true`,
-                    [accessToken, new Date(newExpiryDate || Date.now() + 3600000), userId]
-                );
-
-                return NextResponse.json({
-                    data: {
-                        accessToken,
-                        refreshToken: authInfo.refresh_token,
-                        scope: authInfo.scope,
-                        tokenType: authInfo.token_type,
-                        expiryDate: newExpiryDate
-                    }
-                });
-            } catch (error) {
-                console.error('토큰 갱신 실패:', error);
-                // 갱신 실패 시 인증 정보 삭제
-                await client.query(
-                    `UPDATE google_auth SET is_active = false 
-                    WHERE user_id = $1 AND is_active = true`,
-                    [userId]
-                );
-                return NextResponse.json(
-                    { message: '인증이 만료되었습니다. 재인증이 필요합니다.' },
-                    { status: 401 }
-                );
-            }
-        }
-
-        // 토큰이 유효한 경우 기존 정보 반환
-        return NextResponse.json({
-            data: {
-                accessToken: authInfo.access_token,
-                refreshToken: authInfo.refresh_token,
-                scope: authInfo.scope,
-                tokenType: authInfo.token_type,
-                expiryDate: authInfo.expiry_date
-            }
-        });
-
-    } catch (error) {
-        console.error('구글 인증 정보 조회 중 오류:', error);
-        return NextResponse.json(
-            { message: '서버 오류가 발생했습니다.' },
-            { status: 500 }
-        );
-    } finally {
-        client.release();
-    }
+  } catch (error) {
+    console.error('토큰 저장 오류:', error);
+    return NextResponse.json(
+      { error: '토큰 저장에 실패했습니다.' },
+      { status: 500 }
+    );
+  }
 }

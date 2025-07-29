@@ -15,8 +15,21 @@ function RedirectContent() {
   
   useEffect(() => {
     const url = searchParams.get('url');
-    if (url && window.electron?.openExternal) {
-      window.electron.openExternal(url);
+    console.log('🔗 External redirect 페이지 로드됨');
+    console.log('📎 URL 파라미터:', url);
+    console.log('🖥️ Electron 객체 존재:', !!(window as any).electron);
+    console.log('🔧 openExternal 함수 존재:', !!(window as any).electron?.openExternal);
+    
+    if (url) {
+      if ((window as any).electron?.openExternal) {
+        console.log('✅ Electron에서 외부 URL 열기 시도:', url);
+        (window as any).electron.openExternal(url);
+      } else {
+        console.log('⚠️ Electron 환경이 아니거나 openExternal 함수 없음, 브라우저에서 열기');
+        window.open(url, '_blank');
+      }
+    } else {
+      console.log('❌ URL 파라미터가 없습니다');
     }
   }, [searchParams]);
 
@@ -26,12 +39,30 @@ function RedirectContent() {
 
     // Electron 환경에서만 이벤트 리스너 설정
     if (isElectronEnv) {
-      window.electron.auth.onAuthCallback((data) => {
-        console.log("Auth callback received:", data);
+      console.log('🖥️ Electron 환경에서 인증 콜백 리스너 설정');
+      
+      // window.electron 객체 확인
+      if (!(window as any).electron) {
+        console.error('❌ window.electron 객체가 없습니다');
+        toast.error('Electron 환경 설정 오류가 발생했습니다.');
+        return;
+      }
+      
+      if (!(window as any).electron.auth) {
+        console.error('❌ window.electron.auth 객체가 없습니다');
+        toast.error('Electron 인증 설정 오류가 발생했습니다.');
+        return;
+      }
+      
+      console.log('✅ window.electron.auth 객체 확인됨');
+      
+      (window as any).electron.auth.onAuthCallback((data: any) => {
+        console.log("🎉 Auth callback received:", data);
         setIsAuthenticating(true);
         const { accessToken, refreshToken } = data;
         
         if (accessToken && refreshToken) {
+          console.log('🔑 토큰 수신 완료, 쿠키 설정 시작');
           // 토큰을 쿠키에 저장하는 API 호출
           fetch('/api/auth/set-cookies', {
             method: 'POST',
@@ -41,27 +72,31 @@ function RedirectContent() {
             body: JSON.stringify({ accessToken, refreshToken }),
           })
           .then(async response => {
+            console.log('🍪 쿠키 설정 API 응답 상태:', response.status);
             if (response.ok) {
               setIsAuthenticating(false);
+              console.log('✅ 쿠키 설정 성공, 사용자 정보 가져오기');
               await fetchUser(); // 사용자 정보 가져오기를 기다림
+              console.log('🏠 메인 페이지로 이동');
               window.location.href = '/'; // 이렇게 하면 서버 측에서 쿠키를 인식함
             } else {
-              console.error('Failed to set cookies');
+              console.error('❌ Failed to set cookies, 응답:', await response.text());
               setIsAuthenticating(false);
               toast.error('로그인에 실패했습니다. 다시 시도해주세요.');
-              window.location.href = '/'; // 이렇게 하면 서버 측에서 쿠키를 인식함
+              window.location.href = '/'; 
             }
           })
           .catch(err => {
-            console.error('Error setting cookies:', err);
+            console.error('❌ Error setting cookies:', err);
             setIsAuthenticating(false);
             toast.error('로그인에 실패했습니다. 다시 시도해주세요.');
-            window.location.href = '/'; // 이렇게 하면 서버 측에서 쿠키를 인식함
+            window.location.href = '/'; 
           });
         } else {
+          console.error('❌ 토큰이 없습니다:', { accessToken, refreshToken });
           setIsAuthenticating(false);
           toast.error('로그인에 실패했습니다. 다시 시도해주세요.');
-          window.location.href = '/'; // 이렇게 하면 서버 측에서 쿠키를 인식함
+          window.location.href = '/'; 
         }
       });
     }

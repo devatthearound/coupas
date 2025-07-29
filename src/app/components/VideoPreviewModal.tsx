@@ -16,6 +16,7 @@ interface VideoPreviewModalProps {
   commentTemplate: 'template1' | 'template2';
   onCommentTemplateChange: (template: 'template1' | 'template2') => void;
   onCommentsChange: (newComments: string) => void;
+  keyword?: string; // 키워드 추가
 }
 
 export function VideoPreviewModal({
@@ -27,12 +28,14 @@ export function VideoPreviewModal({
   comments,
   commentTemplate,
   onCommentTemplateChange,
-  onCommentsChange
+  onCommentsChange,
+  keyword
 }: VideoPreviewModalProps) {
   const [videoDataUrl, setVideoDataUrl] = useState<string>('');
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState('');
   const [thumbnailPath, setThumbnailPath] = useState('');
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
 
   useEffect(() => {
     if (isOpen && videoUrl) {
@@ -45,8 +48,46 @@ export function VideoPreviewModal({
           console.error('Error reading video file:', error);
           toast.error('비디오 파일을 불러오는데 실패했습니다.');
         });
+
+      // 디폴트 썸네일 설정 (thumb_img.png)
+      const defaultThumbnail = './thumb_img.png';
+      setThumbnailPath(defaultThumbnail);
+
+      // AI 제목 자동 생성
+      if (keyword && !title) {
+        generateAITitle();
+      }
     }
-  }, [isOpen, videoUrl]);
+  }, [isOpen, videoUrl, keyword]);
+
+  const generateAITitle = async () => {
+    if (!keyword) return;
+
+    try {
+      setIsGeneratingTitle(true);
+      const response = await fetch('/api/generate-title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyword }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setTitle(data.title);
+        toast.success('AI 제목이 생성되었습니다!');
+      } else {
+        toast.error('제목 생성에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('제목 생성 오류:', error);
+      toast.error('제목 생성 중 오류가 발생했습니다.');
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  };
 
   const copyComments = () => {
     navigator.clipboard.writeText(comments);
@@ -57,9 +98,7 @@ export function VideoPreviewModal({
     if (!title.trim()) {
       return toast.error('영상 제목을 입력해주세요.');
     }
-    if (!tags.trim()) {
-      return toast.error('태그를 입력해주세요.');
-    }
+    // 태그는 선택사항으로 변경
     if (!thumbnailPath) {
       return toast.error('썸네일 이미지를 선택해주세요.');
     }
@@ -67,7 +106,7 @@ export function VideoPreviewModal({
     onYoutubeUpload({
       title,
       description: comments,
-      tags: tags.split(',').map(tag => tag.trim()),
+      tags: tags.trim() ? tags.split(',').map(tag => tag.trim()) : [], // 빈 배열 허용
       thumbnailPath
     });
   };
@@ -140,7 +179,16 @@ export function VideoPreviewModal({
           <h4 className="text-lg font-semibold text-white mb-4">업로드 설정</h4>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-300 mb-1">영상 제목</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-sm text-gray-300">영상 제목</label>
+                <button
+                  onClick={generateAITitle}
+                  disabled={isGeneratingTitle || !keyword}
+                  className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-500 disabled:opacity-50"
+                >
+                  {isGeneratingTitle ? '생성 중...' : '🤖 AI 제목 생성'}
+                </button>
+              </div>
               <input
                 type="text"
                 value={title}
@@ -151,23 +199,33 @@ export function VideoPreviewModal({
             </div>
             
             <div>
-              <label className="block text-sm text-gray-300 mb-1">태그 (쉼표로 구분)</label>
+              <label className="block text-sm text-gray-300 mb-1">
+                태그 (쉼표로 구분) 
+                <span className="text-xs text-gray-500 ml-1">- 선택사항</span>
+              </label>
               <input
                 type="text"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 className="w-full bg-gray-800 text-white rounded p-2 border border-gray-700"
-                placeholder="태그1, 태그2, 태그3"
+                placeholder="태그1, 태그2, 태그3 (비워둬도 됩니다)"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-1">썸네일 이미지</label>
+              <label className="block text-sm text-gray-300 mb-1">
+                썸네일 이미지 
+                <span className="text-xs text-green-500 ml-1">- 디폴트 설정됨</span>
+              </label>
               <button
                 onClick={handleThumbnailSelect}
                 className="w-full bg-gray-800 text-white rounded p-2 border border-gray-700 text-left"
               >
-                {thumbnailPath ? thumbnailPath.split('/').pop() : '썸네일 이미지 선택'}
+                {thumbnailPath ? (
+                  thumbnailPath === './thumb_img.png' ? 
+                    '📸 기본 썸네일 (thumb_img.png)' : 
+                    thumbnailPath.split('/').pop()
+                ) : '썸네일 이미지 선택'}
               </button>
             </div>
           </div>

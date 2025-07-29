@@ -176,7 +176,8 @@ export async function GET(request: NextRequest) {
 
         // 각 상품의 productUrl에 대해 deeplink API 호출
 
-        const basePath = process.env.COUPAS_API_BASE_PATH || '';
+        // 개발 환경에서는 로컬 서버 사용
+        const basePath = process.env.NODE_ENV === 'development' ? '' : (process.env.COUPAS_API_BASE_PATH || '');
         try {
             const deeplinkResponse = await fetch(`${basePath}/api/deeplink`, {
                 method: 'POST',
@@ -191,6 +192,7 @@ export async function GET(request: NextRequest) {
 
             const deeplinkData = await deeplinkResponse.json();
             
+            console.log('Deeplink API 응답:', JSON.stringify(deeplinkData, null, 2));
             console.log('리뷰 크롤링 시작');
             // 각 요청 사이에 지연 시간을 두어 순차적으로 처리
             const reviewPromises = productUrls.map(async (url: string, index: number) => {
@@ -212,18 +214,45 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
                 rCode: '0',
                 rMessage: 'success',
-                data: {
-                    productData: products.map((product: ProductData, index: number) => ({
-                        ...product,
-                        shortUrl: deeplinkData.data[index].shortenUrl,
-                        reviewCount: reviewCounts[index].reviewCount,
+                                    data: {
+                        productData: products.map((product: ProductData, index: number) => ({
+                            ...product,
+                            shortUrl: deeplinkData?.data?.[index]?.shortenUrl || product.productUrl || '구매링크 없음',
+                            reviewCount: reviewCounts[index].reviewCount,
                         starRating: reviewCounts[index].starRating
                     }))
                 }
             });
         } catch (error) {
             console.error('Deeplink API 오류:', error);
-            return NextResponse.json(response.data);
+            
+            // Deeplink 실패 시에도 기본 상품 정보는 반환
+            const reviewPromises = productUrls.map(async (url: string, index: number) => {
+                try {
+                    await new Promise(resolve => setTimeout(resolve, index * 500));
+                    return await Promise.race([
+                        getReviewCount(url)
+                    ]);
+                } catch (error) {
+                    console.error('리뷰 크롤링 실패:', url, error instanceof Error ? error.message : '알 수 없는 오류');
+                    return { reviewCount: 0, starRating: 0 };
+                }
+            });
+
+            const reviewCounts = await Promise.all(reviewPromises);
+            
+            return NextResponse.json({
+                rCode: '0',
+                rMessage: 'success',
+                data: {
+                    productData: products.map((product: ProductData, index: number) => ({
+                        ...product,
+                        shortUrl: product.productUrl || '구매링크 없음',
+                        reviewCount: reviewCounts[index]?.reviewCount || 0,
+                        starRating: reviewCounts[index]?.starRating || 0
+                    }))
+                }
+            });
         }
     } catch (error) {
         console.error('쿠팡 검색 API 오류:', error);

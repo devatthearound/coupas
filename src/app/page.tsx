@@ -1,37 +1,25 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import HeroSection from "@/components/landing/HeroSection";
+import FeatureSection from "@/components/landing/FeatureSection";
+import ApiSection from "@/components/landing/ApiSection";
+import VideoSection from "@/components/landing/VideoSection";
+import KeywordSection from "@/components/landing/KeywordSection";
+import DownloadSection from "@/components/landing/DownloadSection";
+import Footer from "@/components/landing/Footer";
 
 export default function HomePage() {
-  const router = useRouter();
-
   return (
-      <div className="max-w-7xl h-full mx-auto px-4 py-12 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            쿠팡 파트너스 <span className="text-[#514FE4]">영상 생성기</span>
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            쿠팡 상품을 검색하고 영상을 자동으로 생성하세요
-          </p>
-          
-          <div className="max-w-3xl mx-auto mb-8 aspect-video">
-            <iframe 
-              className="w-full h-full rounded-lg shadow-lg"
-              src="https://www.youtube.com/embed/7RXVPu7CZRA?si=oHvdMsdHON_bzfLc" 
-              title="YouTube video player" 
-              frameBorder="0" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowFullScreen
-            ></iframe>
-          </div>
-
-          <button
-            onClick={() => router.push('/search')}
-            className="px-8 py-3 bg-[#514FE4] hover:bg-[#4140B3] text-white rounded-lg 
-              transition-colors duration-200 font-medium"
-          >
-            시작하기
-          </button>
-      </div>
+    <div className="min-h-screen bg-white">
+      <main>
+        <HeroSection />
+        <FeatureSection />
+        <ApiSection />
+        <VideoSection />
+        <KeywordSection />
+        <DownloadSection />
+      </main>
+      <Footer />
+    </div>
   );
 }
