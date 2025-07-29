@@ -380,6 +380,16 @@ export class ImageProcessor {
     // backgroundTemplatePath: string,
     outputDir = path.join(process.cwd(), 'output_images')
   ) {
+    console.log('🖼️ === ImageProcessor: createMultipleProductImages 시작 ===');
+    console.log('📝 비디오 제목:', videoTitle);
+    console.log('📊 상품 개수:', productsList.length);
+    console.log('📂 출력 디렉터리:', outputDir);
+    
+    console.log('📋 ImageProcessor에서 받은 상품 목록:');
+    productsList.forEach((product, index) => {
+      console.log(`${index + 1}. [${product.rank}위] ${product.productName}`);
+    });
+    
     const outputPaths = [];
     const tempDir = path.join(homedir(), 'temp_images');
 
@@ -387,17 +397,22 @@ export class ImageProcessor {
       // 임시 디렉토리 생성
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
+        console.log('📁 임시 디렉터리 생성:', tempDir);
       }
 
       // 출력 디렉토리 생성
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
+        console.log('📁 출력 디렉터리 생성:', outputDir);
       }
 
       // 각 상품에 대해 이미지 생성
+      console.log('🔄 이미지 생성 시작...');
       for (let i = 0; i < productsList.length; i++) {
         const product = productsList[i];
         const uniqueId = uuidv4();
+        
+        console.log(`🖼️ [${i + 1}/${productsList.length}] ${product.rank}위 상품 이미지 생성 중: ${product.productName}`);
         const finalOutputPath = path.join(outputDir, `product_image_${uniqueId}.png`);
         const tempOutputPath = path.join(tempDir, `product_image_${i + 1}_temp.png`);
 
@@ -407,7 +422,7 @@ export class ImageProcessor {
           videoTitle,
           product.productName,
           product.productPrice.toLocaleString(),
-          productsList.length - i,
+          i + 1, // 사용자가 변경한 순서 사용 (배열 인덱스 + 1)
           product.isRocket || false,
           product.discountRate || 0,
           product.rating || 0,

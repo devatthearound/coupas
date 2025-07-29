@@ -27,6 +27,7 @@ const TOKEN_PATH = 'client_oauth_token.json';
   };
   thumbnailData?: any;
   thumbnailError?: string;
+  thumbnailSkipped?: boolean;
 }
 
 interface UploadResponse {
@@ -45,11 +46,32 @@ export class YouTubeUploader {
   static async uploadVideo(auth: any, title: any, description: any, tags: any, videoFilePath: any, thumbFilePath: any) {
     // These should use the parameters passed in, not the global variables
 
+    // Debugging logs
+    console.log('🚀 === YouTube 업로드 시작 ===');
+    console.log('📝 제목:', title);
+    console.log('📋 설명:', description);
+    console.log('🏷️ 태그:', tags);
+    console.log('📹 비디오 파일 경로:', videoFilePath);
+    console.log('🖼️ 썸네일 파일 경로:', thumbFilePath);
+    console.log('🔑 인증 객체:', JSON.stringify(auth, null, 2));
+
     // Check if files exist
     try {
+      console.log('🏠 홈 디렉터리:', homedir());
+      console.log('📁 비디오 파일 존재 확인:', fs.existsSync(videoFilePath));
+      console.log('📁 썸네일 파일 존재 확인:', thumbFilePath ? fs.existsSync(thumbFilePath) : '썸네일 없음');
+      
       assert(fs.existsSync(videoFilePath), '비디오 파일이 존재하지 않습니다: ' + videoFilePath);
-      assert(fs.existsSync(thumbFilePath), '썸네일 파일이 존재하지 않습니다: ' + thumbFilePath);
+      
+      // 썸네일은 선택사항으로 처리
+      if (thumbFilePath && !fs.existsSync(thumbFilePath)) {
+        console.warn('⚠️ 썸네일 파일이 존재하지 않습니다. 썸네일 없이 업로드합니다:', thumbFilePath);
+        thumbFilePath = null; // 썸네일 없이 진행
+      }
     } catch (error) {
+      console.error('❌ 파일 존재 확인 실패:', (error as Error).message);
+      console.error('📹 비디오 파일 경로:', videoFilePath);
+      console.error('🖼️ 썸네일 파일 경로:', thumbFilePath);
       return { success: false, error: (error as Error).message };
     }
 
@@ -151,22 +173,31 @@ export class YouTubeUploader {
             reject(err);
             return;
           }
+          console.log('✅ 비디오 업로드 성공! 비디오 ID:', response.data.id);
     
-          // Upload thumbnail
-          service.thumbnails.set({
-            auth: authClient,
-            videoId: response.data.id,
-            media: {
-              body: fs.createReadStream(thumbFilePath)
-            },
-          }, function(err: any, thumbResponse: any) {
-            if (err) {
-              // Still resolve with the video data even if thumbnail fails
-              resolve({ videoData: response.data, thumbnailError: err.message });
-              return;
-            }
-            resolve({ videoData: response.data, thumbnailData: thumbResponse.data });
-          });
+          // 썸네일이 있는 경우에만 업로드
+          if (thumbFilePath) {
+            console.log('🖼️ 썸네일 업로드 시작...');
+            service.thumbnails.set({
+              auth: authClient,
+              videoId: response.data.id,
+              media: {
+                body: fs.createReadStream(thumbFilePath)
+              },
+            }, function(err: any, thumbResponse: any) {
+              if (err) {
+                console.log('❌ 썸네일 업로드 오류:', err);
+                // 썸네일 실패해도 비디오 데이터는 반환
+                resolve({ videoData: response.data, thumbnailError: err.message });
+                return;
+              }
+              console.log('✅ 썸네일 업로드 성공!');
+              resolve({ videoData: response.data, thumbnailData: thumbResponse.data });
+            });
+          } else {
+            console.log('⏭️ 썸네일이 없어서 비디오만 업로드 완료');
+            resolve({ videoData: response.data, thumbnailSkipped: true });
+          }
         });
       } catch (error) {
         reject(error);

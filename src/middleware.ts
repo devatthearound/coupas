@@ -31,19 +31,44 @@ const isElectronUserAgent = (request: NextRequest) => {
   return ua.includes('electron') || ua.includes('coupas');
 };
 
+// 배포 환경 감지 함수
+const isDeploymentEnvironment = (request: NextRequest) => {
+  const host = request.headers.get('host') || '';
+  return !host.includes('localhost') && !host.includes('127.0.0.1');
+};
+
 // 리다이렉트 URL 생성 함수 수정
 const handleUnauthorized = (request: NextRequest, type: 'login' | 'payment') => {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-  const webPath = encodeURIComponent(basePath + request.nextUrl.pathname + request.nextUrl.search);
-  const electronPath = encodeURIComponent(`coupas-auth://login`);
+  const isDeployment = isDeploymentEnvironment(request);
+  const currentOrigin = `${request.nextUrl.protocol}//${request.nextUrl.host}`;
   
+  let redirectTo: string;
   let redirectUrl: string;
   
-  if (type === 'login') {
-    redirectUrl = `https://growsome.kr/login?redirect_to=${electronPath}`;
+  if (isElectronUserAgent(request)) {
+    // Electron 환경: 커스텀 프로토콜 사용
+    redirectTo = encodeURIComponent(`coupas-auth://login`);
+  } else if (isDeployment) {
+    // 배포 환경: 콜백 URL 사용
+    redirectTo = encodeURIComponent(`${currentOrigin}/google-auth/callback`);
   } else {
-    redirectUrl = `https://growsome.kr/payment?product_id=1&redirect_to=${electronPath}`;
+    // 개발 환경: 현재 페이지로 돌아가기
+    redirectTo = encodeURIComponent(basePath + request.nextUrl.pathname + request.nextUrl.search);
   }
+  
+  if (type === 'login') {
+    redirectUrl = `https://growsome.kr/login?redirect_to=${redirectTo}`;
+  } else {
+    redirectUrl = `https://growsome.kr/payment?product_id=1&redirect_to=${redirectTo}`;
+  }
+  
+  console.log('🔗 미들웨어 리다이렉트 생성:');
+  console.log('- 배포 환경:', isDeployment);
+  console.log('- Electron:', isElectronUserAgent(request));
+  console.log('- 현재 Origin:', currentOrigin);
+  console.log('- Redirect To:', redirectTo);
+  console.log('- Final URL:', redirectUrl);
 
   if (isElectronUserAgent(request)) {
     // 중간 페이지로 리다이렉션
@@ -101,6 +126,20 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   console.log("pathname", pathname);
+  
+  // 개발 환경에서는 인증 우회
+  if (process.env.NODE_ENV === 'development') {
+    // localStorage 토큰 확인을 위한 헤더 추가
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-user-id', '7'); // 개발용 기본 사용자 ID
+    
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+  
   // 1. 미들웨어 없이 통과할 경로 체크
   //    - '/' 경로는 미들웨어 검증 없이 통과
   if (pathname === '/') {

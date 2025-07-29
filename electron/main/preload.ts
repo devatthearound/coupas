@@ -60,9 +60,10 @@ const electron = {
       productInfo: any[],
       logoPath: string,
       outputDirectory: string,
-      imageDisplayDuration: number
+      imageDisplayDuration: number,
+      fileName?: string
     ) => ipcRenderer.invoke('combine-videos-and-images', videoTitle, introVideo, outroVideo, backgroundMusic, backgroundTemplatePath, 
-      productInfo, logoPath, outputDirectory, imageDisplayDuration),
+      productInfo, logoPath, outputDirectory, imageDisplayDuration, fileName),
   
     // 비디오 트리밍
     trimVideo: (inputPath: string, outputPath: string, startTime: number, duration: number) => 
@@ -108,6 +109,11 @@ const electron = {
       removeAuthCallback: () => {
         ipcRenderer.removeAllListeners('auth-callback');
         ipcRenderer.removeAllListeners('google-auth-success');
+      },
+
+      // 구글 인증 성공을 메인 프로세스에 알림
+      sendGoogleAuthSuccess: () => {
+        ipcRenderer.send('google-auth-success');
       }
     },
 

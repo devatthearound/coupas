@@ -30,7 +30,8 @@ declare global {
         }[],
         logoPath: string,
         outputDirectory: string,
-        imageDisplayDuration: number
+        imageDisplayDuration: number,
+        fileName?: string
       ) => Promise<{ success: boolean; error?: string, outputPath: string }>;
       uploadVideo: (auth: any, title: string, description: string, tags: string[], videoFilePath: string, thumbFilePath: string) => Promise<{ success: boolean; error?: string, data: any, links: any }>;
       getAuthUrl: () => Promise<string>;

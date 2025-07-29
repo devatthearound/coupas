@@ -163,9 +163,12 @@ export class EnhancedVideoProcessor {
     }[],
     logoPath: string,
     outputDirectory: string,
-    imageDisplayDuration: number
+    imageDisplayDuration: number,
+    fileName?: string // 선택적 파일명 파라미터 추가
   ) {
-    const outputPath = path.join(outputDirectory, `${videoTitle}.mp4`);
+    // 파일명과 영상 제목을 분리
+    const actualFileName = fileName || videoTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+    const outputPath = path.join(outputDirectory, `${actualFileName}.mp4`);
     
     return new Promise(async (resolve, reject) => {
       try {
@@ -197,6 +200,9 @@ export class EnhancedVideoProcessor {
         console.log('비디오1 크기:', video1Dimensions);
 
         // 두 번째 비디오 메타데이터 가져오기
+        console.log('아웃트로 비디오 경로:', outroVideo);
+        console.log('아웃트로 파일 존재 여부:', fs.existsSync(outroVideo));
+        
         const video2Metadata = await VideoProcessor.getVideoMetadata(outroVideo);
         const video2Dimensions = this.extractVideoDimensions(video2Metadata);
         console.log('비디오2 크기:', video2Dimensions);
@@ -221,7 +227,12 @@ export class EnhancedVideoProcessor {
         }
  
         // 함수 호출 - 이미지 생성 부분
-        console.log('제품 이미지 생성 시작...');
+        console.log('🖼️ === 제품 이미지 생성 시작 ===');
+        console.log('📋 제품 목록 (순위별):');
+        productsList.forEach((product, index) => {
+          console.log(`${index + 1}. [${product.rank}위] ${product.productName}`);
+        });
+        
         let productImagePaths;
         try {
           productImagePaths = await ImageProcessor.createMultipleProductImages(
@@ -230,9 +241,12 @@ export class EnhancedVideoProcessor {
             // backgroundTemplatePath,
             outputDir
           );
-          console.log('생성된 제품 이미지 경로들:', productImagePaths);
+          console.log('✅ 생성된 제품 이미지 경로들:');
+          productImagePaths.forEach((imagePath, index) => {
+            console.log(`${index + 1}. ${imagePath}`);
+          });
         } catch (imgError) {
-          console.error('제품 이미지 생성 중 오류:', imgError);
+          console.error('❌ 제품 이미지 생성 중 오류:', imgError);
           reject({ success: false, error: imgError });
           return;
         }
@@ -246,10 +260,20 @@ export class EnhancedVideoProcessor {
         }
 
         // 이미지를 비디오로 변환 - 비디오 크기에 맞춰서
-        console.log('이미지를 비디오로 변환 중...');
+        console.log('🎬 === 이미지를 비디오로 변환 시작 ===');
+        console.log(`📐 타겟 해상도: ${video1Dimensions.width}x${video1Dimensions.height}`);
+        console.log(`⏱️ 각 이미지 표시 시간: ${imageDisplayDuration}초`);
+        console.log(`🎵 배경음악: ${backgroundMusic}`);
+        
         const targetWidth = video1Dimensions.width;
         const targetHeight = video1Dimensions.height;
         const imageVideoPath = path.join(tmpDir, `image_sequence.${videoFormat}`);
+        
+        console.log('🔄 이미지 시퀀스 순서 확인:');
+        productImagePaths.forEach((imagePath, index) => {
+          const filename = path.basename(imagePath);
+          console.log(`${index + 1}. ${filename}`);
+        });
         
         try {
           await this.createVideoFromImages(
@@ -261,9 +285,10 @@ export class EnhancedVideoProcessor {
             targetWidth,
             targetHeight
           );
-          console.log('이미지 시퀀스 비디오 생성 완료:', imageVideoPath);
+          console.log('✅ 이미지 시퀀스 비디오 생성 완료:', imageVideoPath);
+          console.log(`📊 생성된 비디오 크기: ${fs.existsSync(imageVideoPath) ? `${(fs.statSync(imageVideoPath).size / 1024 / 1024).toFixed(2)}MB` : '파일 없음'}`);
         } catch (videoError) {
-          console.error('이미지를 비디오로 변환 중 오류:', videoError);
+          console.error('❌ 이미지를 비디오로 변환 중 오류:', videoError);
           reject({ success: false, error: videoError });
           return;
         }
@@ -275,12 +300,17 @@ export class EnhancedVideoProcessor {
           path.resolve(outroVideo)
         ];
 
+        console.log('=== 비디오 합성 파일 확인 ===');
+        console.log('1. 인트로 비디오:', absolutePaths[0]);
+        console.log('2. 상품 이미지 비디오:', absolutePaths[1]);
+        console.log('3. 아웃트로 비디오:', absolutePaths[2]);
+
         // 파일 존재 여부 확인
         for (const filePath of absolutePaths) {
           if (!fs.existsSync(filePath)) {
             throw new Error(`파일을 찾을 수 없습니다: ${filePath}`);
           }
-          console.log('파일 확인됨:', filePath);
+          console.log('✅ 파일 확인됨:', filePath);
         }
 
         // 중간 파일 경로 생성
@@ -288,14 +318,24 @@ export class EnhancedVideoProcessor {
         const normalizedPath2 = path.join(tmpDir, 'video2_normalized.mp4');
         const normalizedPathImg = path.join(tmpDir, 'image_normalized.mp4');
         
+        console.log('=== 비디오 정규화 시작 ===');
+        
         // 비디오 1 정규화 (코덱, 해상도 통일)
+        console.log('🔄 인트로 비디오 정규화 중...');
         await this.normalizeVideo(absolutePaths[0], normalizedPath1, targetWidth, targetHeight);
+        console.log('✅ 인트로 비디오 정규화 완료');
         
         // 이미지 시퀀스 정규화
+        console.log('🔄 상품 이미지 비디오 정규화 중...');
         await this.normalizeVideo(absolutePaths[1], normalizedPathImg, targetWidth, targetHeight);
+        console.log('✅ 상품 이미지 비디오 정규화 완료');
         
         // 비디오 2 정규화
+        console.log('🔄 아웃트로 비디오 정규화 중...');
         await this.normalizeVideo(absolutePaths[2], normalizedPath2, targetWidth, targetHeight);
+        console.log('✅ 아웃트로 비디오 정규화 완료');
+        
+        console.log('=== 모든 정규화 완료 ===');
 
         // 파일 리스트 생성
         const fileListPath = path.join(tmpDir, 'filelist.txt');
@@ -304,9 +344,20 @@ export class EnhancedVideoProcessor {
           `file '${normalizedPathImg.replace(/'/g, "'\\''")}'`,
           `file '${normalizedPath2.replace(/'/g, "'\\''")}'`
         ].join('\n');
+        
+        console.log('=== 파일 리스트 생성 ===');
+        console.log('파일 리스트 경로:', fileListPath);
+        console.log('파일 리스트 내용:');
+        console.log(fileListContent);
+        
         fs.writeFileSync(fileListPath, fileListContent);
+        console.log('✅ 파일 리스트 작성 완료');
 
         // 최종 concat 수행 (파일 기반 concat - 더 안정적)
+        console.log('=== FFmpeg Concat 시작 ===');
+        console.log('입력 파일 리스트:', fileListPath);
+        console.log('출력 경로:', outputPath);
+        
         const command = ffmpeg()
           .input(fileListPath)
           .inputOptions(['-f', 'concat', '-safe', '0'])
@@ -320,14 +371,20 @@ export class EnhancedVideoProcessor {
         // 로그 및 진행 상황 추가
         command
           .on('start', (commandLine) => {
-            console.log('FFmpeg 최종 concat 명령어:', commandLine);
+            console.log('🚀 FFmpeg 최종 concat 명령어:', commandLine);
           })
           .on('progress', (progress) => {
-            console.log('최종 처리 중...', progress);
+            if (progress.percent) {
+              console.log(`📹 최종 처리 중... ${Math.round(progress.percent)}%`);
+            }
+          })
+          .on('stderr', (stderrLine) => {
+            console.log('FFmpeg stderr:', stderrLine);
           })
           .on('end', () => {
-            console.log('비디오 처리 완료');
-            console.log('최종 출력 경로:', outputPath);
+            console.log('🎉 비디오 처리 완료!');
+            console.log('📁 최종 출력 경로:', outputPath);
+            console.log('📊 파일 크기:', fs.existsSync(outputPath) ? `${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB` : '파일 없음');
             
             // 이미지 시퀀스 임시 파일 경로도 확인해서 추가
             const imageSequenceTempPath = imageVideoPath.replace(/\.\w+$/, '_temp.mp4');
@@ -374,10 +431,17 @@ export class EnhancedVideoProcessor {
             }
           })
           .on('error', (err, stdout, stderr) => {
-            console.error('FFmpeg 오류:', err);
-            console.error('FFmpeg 표준 출력:', stdout);
-            console.error('FFmpeg 오류 출력:', stderr);
-            reject({ success: false, error: new Error(`FFmpeg 오류: ${err.message}\n${stderr}`) });
+            console.error('❌ FFmpeg Concat 오류 발생!');
+            console.error('오류:', err);
+            console.error('표준 출력:', stdout);
+            console.error('오류 출력:', stderr);
+            console.error('파일 리스트 내용 재확인:');
+            if (fs.existsSync(fileListPath)) {
+              console.error(fs.readFileSync(fileListPath, 'utf8'));
+            } else {
+              console.error('파일 리스트가 존재하지 않음:', fileListPath);
+            }
+            reject({ success: false, error: new Error(`FFmpeg Concat 오류: ${err.message}\n${stderr}`) });
           });
 
         command.run();
@@ -412,18 +476,24 @@ export class EnhancedVideoProcessor {
         ])
         .output(outputPath)
         .on('start', (commandLine) => {
-          console.log('정규화 명령어:', commandLine);
+          console.log(`🚀 정규화 명령어 (${path.basename(inputPath)}):`, commandLine);
         })
         .on('progress', (progress) => {
-          console.log(`${path.basename(inputPath)} 정규화 중...`, progress);
+          if (progress.percent) {
+            console.log(`📐 ${path.basename(inputPath)} 정규화 중... ${Math.round(progress.percent)}%`);
+          }
         })
         .on('error', (err, stdout, stderr) => {
-          console.error('정규화 오류:', err);
+          console.error(`❌ ${path.basename(inputPath)} 정규화 오류!`);
+          console.error('오류:', err);
           console.error('FFmpeg 오류 출력:', stderr);
+          console.error('입력 파일 존재:', fs.existsSync(inputPath));
+          console.error('출력 디렉토리 존재:', fs.existsSync(path.dirname(outputPath)));
           reject(err);
         })
         .on('end', () => {
-          console.log('정규화 완료:', outputPath);
+          console.log(`✅ ${path.basename(inputPath)} 정규화 완료:`, outputPath);
+          console.log(`📊 정규화된 파일 크기: ${fs.existsSync(outputPath) ? `${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB` : '파일 없음'}`);
           resolve(void 0);
         })
         .run();
