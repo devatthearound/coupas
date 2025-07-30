@@ -10,8 +10,8 @@ exports.default = async function notarizing(context) {
   }
 
   // notarization 비활성화 옵션 추가
-  if (process.env.SKIP_NOTARIZATION === 'true') {
-    console.log('공증 건너뛰기');
+  if (process.env.SKIP_NOTARIZATION === 'true' || !process.env.APPLE_ID) {
+    console.log('공증 건너뛰기 (환경변수 없음 또는 비활성화됨)');
     return;
   }
 

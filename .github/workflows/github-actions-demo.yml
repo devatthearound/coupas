@@ -65,9 +65,7 @@ jobs:
         timeout-minutes: 30
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SKIP_NOTARIZATION: 'true'
         run: |
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish always
@@ -78,7 +76,7 @@ jobs:
       # Windows 빌드
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
-        timeout-minutes: 45
+        timeout-minutes: 60
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
