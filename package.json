@@ -175,7 +175,8 @@
       "identity": null,
       "signIgnore": ["**/*"],
       "entitlements": null,
-      "entitlementsInherit": null
+      "entitlementsInherit": null,
+      "notarize": false
     },
     "dmg": {
       "icon": "electron/assets/icon.icns",
