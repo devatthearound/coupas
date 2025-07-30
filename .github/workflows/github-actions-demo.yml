@@ -71,6 +71,11 @@ jobs:
           CSC_KEY_PASSWORD: ''
           CSC_NAME: ''
         run: |
+          # npm 캐시 정리
+          npm cache clean --force
+          # node_modules 삭제 후 재설치
+          rm -rf node_modules package-lock.json
+          npm ci
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish never --config.mac.identity=null --config.mac.target=zip
           else
@@ -80,10 +85,15 @@ jobs:
       # Windows 빌드
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
-        timeout-minutes: 90
+        timeout-minutes: 120
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          # npm 캐시 정리
+          npm cache clean --force
+          # node_modules 삭제 후 재설치
+          rm -rf node_modules package-lock.json
+          npm ci
           npx electron-builder --win --${{ matrix.arch }} --publish never
       
       # 빌드 결과물을 릴리스에 업로드
