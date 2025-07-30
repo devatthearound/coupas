@@ -245,6 +245,8 @@ function checkForUpdatesManually() {
 }
 
 const createWindow = async () => {
+  console.log("createWindow 호출됨 - 스택:", new Error().stack?.split('\n').slice(1, 4).join('\n'));
+  
   if (isCreatingWindow) {
     console.log("윈도우 생성이 이미 진행 중입니다.");
     return mainWindow;
