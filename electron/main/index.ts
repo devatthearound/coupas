@@ -339,17 +339,6 @@ const startNextJSServer = async () => {
 
     console.log(`Next.js 서버 시작 시도: ${webDir} on port ${nextJSPort}`);
 
-    // 기존 서버가 실행 중인지 확인하고 종료
-    try {
-      const testResponse = await fetch(`http://localhost:${nextJSPort}/api/healthy`);
-      if (testResponse.ok) {
-        console.log(`포트 ${nextJSPort}에서 기존 서버 발견, 새로운 포트 시도`);
-        return await startNextJSServer();
-      }
-    } catch (e) {
-      // 포트가 사용되지 않음, 계속 진행
-    }
-
     await startServer({
       dir: webDir,
       isDev: false,
