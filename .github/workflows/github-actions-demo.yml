@@ -72,9 +72,9 @@ jobs:
           CSC_NAME: ''
         run: |
           if [ "${{ matrix.arch }}" == "arm64" ]; then
-            npx electron-builder --mac --arm64 --publish always --config.mac.identity=null --config.mac.target=zip
+            npx electron-builder --mac --arm64 --publish always --config.mac.identity=null --config.mac.target=zip --config.publish.publishAutoUpdate=true
           else
-            npx electron-builder --mac --x64 --publish always --config.mac.identity=null --config.mac.target=zip
+            npx electron-builder --mac --x64 --publish always --config.mac.identity=null --config.mac.target=zip --config.publish.publishAutoUpdate=true
           fi
       
       # Windows 빌드
@@ -84,7 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          npx electron-builder --win --${{ matrix.arch }} --publish always
+          npx electron-builder --win --${{ matrix.arch }} --publish always --config.publish.publishAutoUpdate=true
       
       # 빌드 결과물을 릴리스에 업로드
       - name: Upload Release Assets
@@ -95,5 +95,7 @@ jobs:
             releases/*.dmg
             releases/*.exe
             releases/*.zip
+            releases/*.yml
+            releases/*.json
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
