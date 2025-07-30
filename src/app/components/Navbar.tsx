@@ -280,6 +280,16 @@ export default function Navbar({
                 서비스 소개
               </Link>
               <Link
+                href="/about"
+                className={`text-sm transition-colors ${
+                  isActive('/about') 
+                    ? 'text-[#514FE4] dark:text-[#6C63FF] font-medium' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#514FE4] dark:hover:text-[#6C63FF]'
+                }`}
+              >
+                쿠파스 소개
+              </Link>
+              <Link
                 href="/search"
                 className={`text-sm transition-colors ${
                   isActive('/search') 
@@ -444,6 +454,17 @@ export default function Navbar({
             onClick={() => setIsMobileMenuOpen(false)}
           >
             서비스 소개
+          </Link>
+          <Link
+            href="/about"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive('/about') 
+                ? 'text-blue-700 bg-blue-50' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            쿠파스 소개
           </Link>
           <Link
             href="/search"
