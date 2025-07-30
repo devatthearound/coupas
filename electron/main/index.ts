@@ -257,10 +257,10 @@ const createWindow = async () => {
   
   try {
     mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1400,
+    height: 900,
+    minWidth: 1000,
+    minHeight: 700,
     titleBarStyle: 'default',
     title: '쿠파스 - 제휴영상 만들기',
     webPreferences: {
