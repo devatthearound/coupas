@@ -168,22 +168,22 @@ export default function HomePage() {
           </p>
           
           {trendingKeywords.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {trendingKeywords.map((keyword, index) => (
                 <button
                   key={index}
                   onClick={() => handleSearch(keyword)}
                   disabled={isLoading}
                   title={`"${keyword}" 키워드로 바로 검색하기`}
-                  className={`group px-3 py-1.5 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
+                  className={`group px-3 py-2 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
                     dark:from-red-900/20 dark:to-orange-900/20 dark:hover:from-red-900/30 dark:hover:to-orange-900/30
                     border border-red-200 dark:border-red-800 rounded-full text-sm font-medium 
                     text-red-700 dark:text-red-300 transition-all duration-200 hover:scale-105 hover:shadow-md
                     ${isLoading ? 'opacity-50 cursor-not-allowed transform-none hover:scale-100' : 'active:scale-95 cursor-pointer'}`}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 justify-center">
                     <span className="text-xs group-hover:animate-bounce">🔥</span>
-                    {keyword}
+                    <span className="truncate">{keyword}</span>
                     <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">🔍</span>
                   </span>
                 </button>
