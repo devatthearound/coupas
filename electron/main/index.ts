@@ -27,6 +27,7 @@ const originalConsole = {
 // 메인 윈도우 변수
 let mainWindow: BrowserWindow | null = null;
 let isCreatingWindow = false;
+let isServerStarted = false;
 
 // 콘솔 로그 래핑 함수
 function wrapConsole() {
@@ -333,6 +334,11 @@ const createWindow = async () => {
 };
 
 const startNextJSServer = async () => {
+  if (isServerStarted) {
+    console.log('서버가 이미 시작되었습니다.');
+    return 30011; // 기본 포트 반환
+  }
+  
   try {
     const nextJSPort = await getPort({ portRange: [30_011, 50_000] });
     const webDir = join(app.getAppPath(), "app");
@@ -350,6 +356,7 @@ const startNextJSServer = async () => {
     });
 
     console.log(`Next.js 서버 시작 성공: port ${nextJSPort}`);
+    isServerStarted = true;
     return nextJSPort;
   } catch (error) {
     console.error('Next.js 서버 시작 실패:', error);
