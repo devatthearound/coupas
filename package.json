@@ -109,17 +109,11 @@
     "files": [
       "build",
       {
-        "from": ".next/standalone",
-        "to": "app",
+        "from": ".next",
+        "to": "app/.next",
         "filter": [
-          "!**/.env",
-          "!**/package.json",
-          "!**/md/**"
+          "**/*"
         ]
-      },
-      {
-        "from": ".next/static",
-        "to": "app/.next/static"
       },
       {
         "from": "public",
