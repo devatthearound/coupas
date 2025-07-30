@@ -182,7 +182,9 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "identity": null,
-      "signIgnore": ["**/*"]
+      "signIgnore": ["**/*"],
+      "entitlements": null,
+      "entitlementsInherit": null
     },
     "dmg": {
       "icon": "electron/assets/icon.icns",
