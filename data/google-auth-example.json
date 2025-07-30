@@ -1,0 +1,9 @@
+{
+  "access_token": "your_google_oauth_access_token_here",
+  "refresh_token": "your_google_oauth_refresh_token_here",
+  "expires_at": 1234567890123,
+  "scope": "https://www.googleapis.com/auth/youtube.upload",
+  "token_type": "Bearer",
+  "saved_at": "2025-01-01T00:00:00.000Z",
+  "updated_at": "2025-01-01T00:00:00.000Z"
+}
