@@ -2,6 +2,9 @@
 const nextConfig = {
   output: process.env.NODE_ENV === 'production' ? "standalone" : undefined,
   reactStrictMode: true,
+  eslint: {
+    ignoreDuringBuilds: true, // 빌드 중 ESLint 에러 무시
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',

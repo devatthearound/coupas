@@ -207,7 +207,7 @@ export default function SearchPage() {
               </svg>
             </div>
             <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-              🔍 "{searchQuery}" 검색 중...
+              🔍 &quot;{searchQuery}&quot; 검색 중...
             </p>
             <p className="text-gray-600 dark:text-gray-400 mb-2">상위 {limit}개 상품을 가져오는 중...</p>
             <p className="text-sm text-gray-500 dark:text-gray-500">잠시 후 자동으로 다음 단계로 이동합니다</p>

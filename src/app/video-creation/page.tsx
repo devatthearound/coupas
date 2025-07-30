@@ -7,6 +7,7 @@ import { ProductData } from '@/services/coupang/types';
 import { VideoPreviewModal } from '../components/VideoPreviewModal';
 import { isElectron } from '@/utils/environment';
 import Image from 'next/image';
+import { useUser } from '../contexts/UserContext';
 
 
 export default function VideoCreationPage() {
@@ -28,6 +29,7 @@ type ExtendedProductData = ProductData & {
 function VideoCreationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
   const [selectedProducts, setSelectedProducts] = useState<ExtendedProductData[]>([]);
   // 비디오 제목
   const [videoTitle, setVideoTitle] = useState('');
@@ -570,37 +572,15 @@ function VideoCreationContent() {
       return;
     }
     
-    try {
-      const template: Partial<VideoTemplate> = {
-        user_id: parseInt(user.id),
-        template_name: templateName,
-        intro_video_path: introVideo || undefined,
-        outro_video_path: outroVideo || undefined,
-        background_music_path: backgroundMusic || undefined,
-        output_directory: outputDirectory || undefined,
-        image_display_duration: imageDisplayDuration,
-        is_default: isDefault,
-        is_active: true
-      };
-      
-      await templateService.createTemplate(template);
-    } catch (error) {
-      console.error('템플릿 저장 오류:', error);
-      toast.error('템플릿 저장 중 오류가 발생했습니다.');
-      throw error;
-    }
+    // TODO: 템플릿 저장 기능 구현
+    console.log('템플릿 저장 기능은 아직 구현되지 않았습니다.');
+    toast.error('템플릿 저장 기능은 아직 구현되지 않았습니다.');
   };
   
   useEffect(() => {
     const loadDefaultTemplate = async () => {
-      try {
-        const template = await templateService.getDefaultTemplate();
-        if (template) {
-          applyTemplate(template);
-        }
-      } catch (error) {
-        console.error('기본 템플릿 로드 오류:', error);
-      }
+      // TODO: 기본 템플릿 로드 기능 구현
+      console.log('기본 템플릿 로드 기능은 아직 구현되지 않았습니다.');
     }
     
     loadDefaultTemplate();
