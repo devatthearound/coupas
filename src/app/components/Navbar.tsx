@@ -285,13 +285,16 @@ export default function Navbar({
               </Link>
               <Link
                 href="/review-analyzer"
-                className={`text-sm transition-colors ${
+                className={`text-sm transition-colors flex items-center gap-2 ${
                   isActive('/review-analyzer') 
                     ? 'text-[#514FE4] dark:text-[#6C63FF] font-medium' 
                     : 'text-gray-600 dark:text-gray-400 hover:text-[#514FE4] dark:hover:text-[#6C63FF]'
                 }`}
               >
                 리뷰분석
+                <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 rounded-full font-medium">
+                  준비중
+                </span>
               </Link>
 
             </div>
@@ -448,7 +451,12 @@ export default function Navbar({
             }`}
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            리뷰분석
+            <div className="flex items-center justify-between">
+              <span>리뷰분석</span>
+              <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 rounded-full font-medium">
+                준비중
+              </span>
+            </div>
           </Link>
 
 
