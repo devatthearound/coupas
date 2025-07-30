@@ -285,21 +285,23 @@ const createWindow = async () => {
   const loadURL = async () => {
     console.log("URL 로딩을 시작합니다...");
     if (is.dev) {
-      console.log("개발 모드: localhost:3000으로 연결합니다.");
-      try {
-        await mainWindow?.loadURL("http://localhost:3000");
-        console.log("개발 서버 연결 성공");
-      } catch (error) {
-        console.error("개발 서버 연결 실패:", error);
-        // 포트 3001도 시도
+      console.log("개발 모드: Next.js 서버에 연결합니다.");
+      // 개발 모드에서 사용 가능한 포트 찾기
+      const devPorts = [3000, 3001, 3002, 3003];
+      
+      for (const port of devPorts) {
         try {
-          console.log("포트 3001로 재시도합니다.");
-          await mainWindow?.loadURL("http://localhost:3001");
-          console.log("포트 3001 연결 성공");
-        } catch (error2) {
-          console.error("포트 3001 연결도 실패:", error2);
+          console.log(`포트 ${port}로 연결 시도...`);
+          await mainWindow?.loadURL(`http://localhost:${port}`);
+          console.log(`포트 ${port} 연결 성공`);
+          return;
+        } catch (error) {
+          console.error(`포트 ${port} 연결 실패:`, error);
+          continue;
         }
       }
+      
+      console.error("모든 포트 연결 실패");
     } else {
       try {
         port = await startNextJSServer();
