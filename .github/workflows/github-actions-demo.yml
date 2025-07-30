@@ -69,17 +69,18 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
           CSC_KEY_PASSWORD: ''
+          CSC_NAME: ''
         run: |
           if [ "${{ matrix.arch }}" == "arm64" ]; then
-            npx electron-builder --mac --arm64 --publish always
+            npx electron-builder --mac --arm64 --publish always --config.mac.identity=null
           else
-            npx electron-builder --mac --x64 --publish always
+            npx electron-builder --mac --x64 --publish always --config.mac.identity=null
           fi
       
       # Windows 빌드
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
-        timeout-minutes: 60
+        timeout-minutes: 90
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
