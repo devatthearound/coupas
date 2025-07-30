@@ -45,3 +45,9 @@ build
 .env.test
 .env.test.local
 .env.production.local
+
+# Sensitive files - DO NOT COMMIT
+.env
+bot/.env
+data/*.json
+!data/*-example.json
