@@ -37,6 +37,56 @@ function RedirectContent() {
     const isElectronEnv = isElectron();
     setIsElectron(isElectronEnv);
 
+    // pending 콜백 확인 및 처리
+    const pendingCallback = localStorage.getItem('pending-auth-callback');
+    if (pendingCallback) {
+      console.log('📦 저장된 pending 콜백 발견, 처리 시작...');
+      try {
+        const tokens = JSON.parse(pendingCallback);
+        localStorage.removeItem('pending-auth-callback');
+        
+        console.log('🔑 Pending 콜백 토큰 처리:', {
+          accessToken: tokens.accessToken ? `${tokens.accessToken.substring(0, 20)}...` : null,
+          refreshToken: tokens.refreshToken ? `${tokens.refreshToken.substring(0, 20)}...` : null
+        });
+        
+        // 콜백 처리 로직 실행
+        if (tokens.accessToken && tokens.refreshToken) {
+          setIsAuthenticating(true);
+          
+          localStorage.setItem('coupas_access_token', tokens.accessToken);
+          console.log('💾 localStorage에 토큰 저장 완료');
+          
+          fetch('/api/auth/set-cookies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(tokens),
+          })
+          .then(async response => {
+            if (response.ok) {
+              console.log('✅ Pending 콜백 처리 성공');
+              await fetchUser();
+              setIsAuthenticating(false);
+              window.location.href = '/';
+            } else {
+              console.error('❌ Pending 콜백 쿠키 설정 실패');
+              setIsAuthenticating(false);
+              toast.error('로그인 처리에 실패했습니다.');
+            }
+          })
+          .catch(err => {
+            console.error('❌ Pending 콜백 처리 오류:', err);
+            setIsAuthenticating(false);
+            toast.error('로그인 처리에 실패했습니다.');
+          });
+        }
+      } catch (error) {
+        console.error('❌ Pending 콜백 파싱 오류:', error);
+        localStorage.removeItem('pending-auth-callback');
+      }
+      return; // pending 콜백 처리 시 아래 로직 건너뛰기
+    }
+
     // Electron 환경에서만 이벤트 리스너 설정
     if (isElectronEnv) {
       console.log('🖥️ Electron 환경에서 인증 콜백 리스너 설정');
@@ -63,6 +113,15 @@ function RedirectContent() {
         
         if (accessToken && refreshToken) {
           console.log('🔑 토큰 수신 완료, 쿠키 설정 시작');
+          
+          // localStorage에도 토큰 저장 (개발 환경 및 빠른 접근을 위해)
+          try {
+            localStorage.setItem('coupas_access_token', accessToken);
+            console.log('💾 localStorage에 토큰 저장 완료');
+          } catch (error) {
+            console.warn('⚠️ localStorage 저장 실패:', error);
+          }
+          
           // 토큰을 쿠키에 저장하는 API 호출
           fetch('/api/auth/set-cookies', {
             method: 'POST',

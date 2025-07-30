@@ -46,19 +46,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
         'Content-Type': 'application/json',
       };
       
-      let hasToken = false;
+      let hasTokenInLocalStorage = false;
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem('coupas_access_token');
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
-          hasToken = true;
+          hasTokenInLocalStorage = true;
           console.log('🔑 localStorage에서 토큰 발견, 헤더에 포함');
         } else {
-          console.log('❌ localStorage에 토큰 없음');
+          console.log('⚠️ localStorage에 토큰 없음, 쿠키로 인증 시도');
         }
       }
 
       console.log('🌐 API 호출 중: /api/user/me');
+      console.log('🍪 쿠키 포함하여 요청 (credentials: include)');
       const response = await fetch(`/api/user/me`, {
         credentials: 'include',
         headers,
@@ -192,11 +193,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // 개발용 토큰 설정 함수
   const setDevToken = async (token: string) => {
     try {
-      console.log('🔑 토큰 설정 시작...');
+      console.log('🔑 개발용 토큰 설정 시작...');
       
       // 토큰 형식 확인
       if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
-        throw new Error('유효하지 않은 토큰 형식입니다.');
+        throw new Error('유효하지 않은 토큰 형식입니다. JWT 토큰이어야 합니다.');
       }
       
       // 토큰 디코딩해서 사용자 정보 추출
@@ -213,10 +214,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('coupas_access_token', token);
       console.log('💾 토큰 localStorage 저장 완료');
       
+      // 쿠키에도 저장
+      try {
+        const response = await fetch('/api/auth/set-cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            accessToken: token, 
+            refreshToken: token // 개발환경에서는 같은 토큰 사용
+          }),
+        });
+        
+        if (response.ok) {
+          console.log('🍪 개발용 토큰 쿠키 저장 완료');
+        } else {
+          console.warn('⚠️ 쿠키 저장 실패, localStorage만 사용');
+        }
+      } catch (cookieError) {
+        console.warn('⚠️ 쿠키 저장 실패:', cookieError);
+      }
+      
       // 가짜 사용자 정보 설정 (개발용)
       const devUser: User = {
         id: payload.userId || '7',
-        name: 'Development User',
+        name: payload.name || 'Development User',
         email: payload.email || 'growsome.me@gmail.com',
         role: 'user'
       };
@@ -285,28 +306,188 @@ export function UserProvider({ children }: { children: ReactNode }) {
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     (window as any).debugAuth = debugTokenStatus;
     (window as any).setDevToken = setDevToken;
+    (window as any).fetchUser = fetchUser;
+    (window as any).logout = logout;
     
+    // 쿠키 상태 확인 함수
+    (window as any).checkCookies = async () => {
+      console.log('🍪 쿠키 상태 확인 시작...');
+      
+      try {
+        const response = await fetch('/api/user/me', { credentials: 'include' });
+        const data = await response.json();
+        console.log('📡 API 응답:', data);
+        
+        if (data.authenticated) {
+          console.log('✅ 쿠키 인증 성공');
+          console.log('👤 사용자 정보:', data.user);
+        } else {
+          console.log('❌ 쿠키 인증 실패');
+          console.log('💬 메시지:', data.message);
+        }
+      } catch (error) {
+        console.error('❌ 쿠키 확인 오류:', error);
+      }
+    };
+
+    // 통합로그인 콜백 시뮬레이션 함수
+    (window as any).simulateAuthCallback = (accessToken?: string, refreshToken?: string) => {
+      console.log('🎭 인증 콜백 시뮬레이션 시작...');
+      
+      const defaultToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3IiwiZW1haWwiOiJncm93c29tZS5tZUBnbWFpbC5jb20iLCJuYW1lIjoiVGVzdCBVc2VyIiwiaWF0IjoxNzUzNzYwMzE1LCJleHAiOjE3NTYzNTIzMTV9.vgkcK_5QJcyYxe5A-T_ddJnEZQKJTfT6wiP175eIO0w";
+      
+      const tokens = {
+        accessToken: accessToken || defaultToken,
+        refreshToken: refreshToken || defaultToken
+      };
+      
+      console.log('📨 콜백 데이터:', tokens);
+      
+      // 실제 콜백 처리와 동일한 로직 실행
+      if ((window as any).electron?.auth) {
+        // external-redirect 페이지의 콜백 처리 코드와 동일
+        localStorage.setItem('coupas_access_token', tokens.accessToken);
+        
+        fetch('/api/auth/set-cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tokens),
+        })
+        .then(async response => {
+          if (response.ok) {
+            console.log('✅ 시뮬레이션 성공, 사용자 정보 새로고침');
+            await fetchUser();
+          } else {
+            console.error('❌ 쿠키 설정 실패');
+          }
+        });
+      } else {
+        console.log('⚠️ Electron 환경이 아니므로 브라우저 모드로 처리');
+        localStorage.setItem('coupas_access_token', tokens.accessToken);
+        fetchUser();
+      }
+    };
+
+    // 스토리지 클리어 함수
+    (window as any).clearAuth = async () => {
+      console.log('🗑️ 인증 정보 모두 삭제...');
+      
+      // localStorage 클리어
+      localStorage.removeItem('coupas_access_token');
+      console.log('💾 localStorage 토큰 삭제됨');
+      
+      // 쿠키 클리어
+      try {
+        const response = await fetch('/api/auth/clear-cookies', { 
+          method: 'POST',
+          credentials: 'include' 
+        });
+        
+        if (response.ok) {
+          console.log('🍪 쿠키 삭제됨');
+        } else {
+          console.log('⚠️ 쿠키 삭제 실패 (이미 없을 수 있음)');
+        }
+      } catch (error) {
+        console.log('⚠️ 쿠키 삭제 요청 실패:', error);
+      }
+      
+      // 상태 리셋
+      setUser(null);
+      setError(null);
+      console.log('✅ 모든 인증 정보 삭제 완료');
+    };
+
     // 개발자 도움말 함수
     (window as any).devHelp = () => {
       console.log(`
 🔧 개발자 도구 도움말:
 
 📋 사용 가능한 함수들:
-- setDevToken("토큰")   : 개발용 토큰 설정
-- debugAuth()          : 현재 인증 상태 확인
-- devHelp()           : 이 도움말 표시
-- testYouTubeAuth()   : 유튜브 인증 테스트
+- devHelp()                    : 이 도움말 표시
+- setDevToken("토큰")          : 개발용 토큰 설정
+- debugAuth()                  : 현재 인증 상태 확인
+- checkCookies()               : 쿠키 인증 상태 확인
+- simulateAuthCallback()       : 통합로그인 콜백 시뮬레이션 (빠른 방법)
+- testProtocolCallback()       : 실제 프로토콜 콜백 테스트 (디버깅용)
+- clearAuth()                  : 모든 인증 정보 삭제
+- testYouTubeAuth()           : 유튜브 인증 테스트
 
-🚀 빠른 개발용 토큰 설정:
-setDevToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3IiwiZW1haWwiOiJncm93c29tZS5tZUBnbWFpbC5jb20iLCJpYXQiOjE3NTM3NjAzMTUsImV4cCI6MTc1NjM1MjMxNX0.vgkcK_5QJcyYxe5A-T_ddJnEZQKJTfT6wiP175eIO0w")
+🚀 빠른 로그인 (개발용):
+simulateAuthCallback()
 
-💡 팁: 
-- 로그인 버튼을 클릭하면 기본적으로 Growsome 로그인으로 리다이렉트됩니다
-- 빠른 개발이 필요할 때만 위의 setDevToken()을 사용하세요
-- 유튜브 업로드 문제가 있으면 testYouTubeAuth()로 테스트하세요
+🔧 수동 토큰 설정:
+setDevToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3IiwiZW1haWwiOiJncm93c29tZS5tZUBnbWFpbC5jb20iLCJuYW1lIjoiVGVzdCBVc2VyIiwiaWF0IjoxNzUzNzYwMzE1LCJleHAiOjE3NTYzNTIzMTV9.vgkcK_5QJcyYxe5A-T_ddJnEZQKJTfT6wiP175eIO0w")
+
+💡 문제 해결 가이드:
+1. 🚀 빠른 로그인: simulateAuthCallback() 사용 (추천)
+2. 🔧 프로토콜 디버깅: testProtocolCallback() 사용
+3. 🍪 쿠키 문제 확인: checkCookies() 사용  
+4. 🗑️ 완전 초기화: clearAuth() 후 다시 로그인
+5. 🔍 현재 상태 확인: debugAuth() 사용
+
+🚨 실제 로그인이 안 될 때:
+- 외부 브라우저에서 로그인 완료 후 Electron 터미널에서 프로토콜 콜백 로그 확인
+- 콜백이 안 오면: testProtocolCallback() 으로 테스트
+- 그래도 안 되면: simulateAuthCallback() 으로 우회
       `);
     };
     
+    // 프로토콜 콜백 테스트 함수
+    (window as any).testProtocolCallback = (accessToken?: string, refreshToken?: string) => {
+      console.log('🧪 프로토콜 콜백 테스트 시작...');
+      
+      const testTokens = {
+        accessToken: accessToken || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3IiwiZW1haWwiOiJncm93c29tZS5tZUBnbWFpbC5jb20iLCJuYW1lIjoiVGVzdCBVc2VyIiwiaWF0IjoxNzUzNzYwMzE1LCJleHAiOjE3NTYzNTIzMTV9.vgkcK_5QJcyYxe5A-T_ddJnEZQKJTfT6wiP175eIO0w",
+        refreshToken: refreshToken || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3IiwiZW1haWwiOiJncm93c29tZS5tZUBnbWFpbC5jb20iLCJuYW1lIjoiVGVzdCBVc2VyIiwiaWF0IjoxNzUzNzYwMzE1LCJleHAiOjE3NTYzNTIzMTV9.vgkcK_5QJcyYxe5A-T_ddJnEZQKJTfT6wiP175eIO0w"
+      };
+      
+      console.log('📨 테스트 콜백 데이터:', {
+        accessToken: testTokens.accessToken.substring(0, 20) + '...',
+        refreshToken: testTokens.refreshToken.substring(0, 20) + '...'
+      });
+      
+      if ((window as any).electron?.auth) {
+        console.log('📡 Electron auth 객체를 통해 콜백 시뮬레이션');
+        
+        // 실제 프로토콜 콜백과 동일한 이벤트 발생
+        if ((window as any).electron.auth.onAuthCallback) {
+          // 이미 리스너가 설정되어 있다면 직접 호출
+          console.log('🎯 기존 콜백 리스너로 이벤트 전송');
+          
+          // external-redirect 페이지가 아닌 경우 해당 페이지로 이동
+          if (!window.location.pathname.includes('external-redirect')) {
+            console.log('📍 external-redirect 페이지로 이동하여 콜백 처리');
+            window.location.href = '/external-redirect';
+            
+            // 페이지 로드 후 콜백 실행을 위해 저장
+            localStorage.setItem('pending-auth-callback', JSON.stringify(testTokens));
+          } else {
+            // 이미 external-redirect 페이지인 경우 직접 처리
+            console.log('✅ 현재 페이지에서 직접 콜백 처리');
+            setTimeout(() => {
+              if ((window as any).electron?.auth?.onAuthCallback) {
+                // 기존 리스너 제거 후 새로 설정
+                (window as any).electron.auth.removeAuthCallback();
+                (window as any).electron.auth.onAuthCallback((data: any) => {
+                  console.log("🎉 테스트 콜백 수신:", data);
+                });
+              }
+              
+              // 실제 이벤트 발생 시뮬레이션
+              const event = new CustomEvent('electron-auth-callback', { 
+                detail: testTokens 
+              });
+              window.dispatchEvent(event);
+            }, 100);
+          }
+        }
+      } else {
+        console.log('⚠️ Electron 환경이 아님, 브라우저 모드로 처리');
+        (window as any).simulateAuthCallback(testTokens.accessToken, testTokens.refreshToken);
+      }
+    };
+
     // 유튜브 인증 테스트 함수
     (window as any).testYouTubeAuth = async () => {
       try {
