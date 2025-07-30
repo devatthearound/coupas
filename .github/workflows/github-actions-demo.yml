@@ -62,6 +62,7 @@ jobs:
       # macOS 빌드
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
+        timeout-minutes: 30
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -77,6 +78,7 @@ jobs:
       # Windows 빌드
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
+        timeout-minutes: 45
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
