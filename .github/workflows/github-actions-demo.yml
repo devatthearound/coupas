@@ -82,8 +82,8 @@ jobs:
           npm install --legacy-peer-deps
           # Rollup optional dependencies 문제 해결
           npm rebuild rollup
-          # Electron 빌드 (tsup 대신 직접 실행)
-          npx tsup electron/main/index.ts --format cjs,esm --dts --external electron
+          # Electron 빌드 (tsup 대신 직접 실행, DTS 비활성화)
+          npx tsup electron/main/index.ts --format cjs,esm --external electron
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish never --config.mac.identity=null --config.mac.target=zip
           else
@@ -106,8 +106,8 @@ jobs:
           npm install --legacy-peer-deps
           # Rollup optional dependencies 문제 해결
           npm rebuild rollup
-          # Electron 빌드 (tsup 대신 직접 실행)
-          npx tsup electron/main/index.ts --format cjs,esm --dts --external electron
+          # Electron 빌드 (tsup 대신 직접 실행, DTS 비활성화)
+          npx tsup electron/main/index.ts --format cjs,esm --external electron
           npx electron-builder --win --${{ matrix.arch }} --publish never
       
       # 빌드 결과물을 릴리스에 업로드
