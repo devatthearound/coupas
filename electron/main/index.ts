@@ -13,6 +13,9 @@ import { TemplateStore, VideoTemplate } from "./templateStore.js";
 
 console.log("일렉트론 메인 프로세스가 시작되었습니다.");
 
+// Electron 환경 설정
+const isDev = process.env.NODE_ENV === 'development';
+
 // 기존 console 메서드 캐싱
 const originalConsole = {
   log: console.log,
@@ -333,7 +336,16 @@ const startNextJSServer = async () => {
   }
 };
 
-app.whenReady().then(() => {
+// Electron 앱 초기화
+app.whenReady().then(async () => {
+  console.log("Electron 앱이 준비되었습니다.");
+  
+  try {
+    await createWindow();
+    console.log("메인 윈도우 생성 완료");
+  } catch (error) {
+    console.error("윈도우 생성 중 오류 발생:", error);
+  }
   console.log("앱이 준비되었습니다.");
   
   // 프로토콜 등록을 더 일찍 수행

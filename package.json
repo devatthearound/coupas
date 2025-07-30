@@ -26,7 +26,7 @@
     "dev": "npm-run-all --parallel electron:dev next:dev",
     "electron:build_watch": "tsup --watch",
     "electron:dev": "npm-run-all --parallel electron:build_watch electron:watch",
-    "electron:watch": "cross-env NODE_ENV='development' nodemon",
+    "electron:watch": "cross-env NODE_ENV='development' nodemon --exec electron",
     "test:image": "cross-env NODE_ENV='development' node --loader ts-node/esm electron/main/test.ts"
   },
   "dependencies": {
