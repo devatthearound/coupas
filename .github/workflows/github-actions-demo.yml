@@ -67,6 +67,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           SKIP_NOTARIZATION: 'true'
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ''
+          CSC_KEY_PASSWORD: ''
         run: |
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish always

@@ -93,7 +93,6 @@
     "productName": "coupas",
     "executableName": "coupas",
     "copyright": "Copyright © 2025 The Around",
-    "appBundleId": "com.growsome.coupas",
     "asar": true,
     "publish": [
       {
@@ -178,11 +177,8 @@
       ],
       "artifactName": "coupas-mac-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist",
-      "identity": "E4DABC6010CF06B113DBC8684BBB953F29FDCB39"
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "dmg": {
       "icon": "electron/assets/icon.icns",
