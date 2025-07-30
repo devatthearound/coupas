@@ -526,7 +526,7 @@ app.whenReady().then(async () => {
 
   app.on("activate", () => {
     console.log('App activated');
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (BrowserWindow.getAllWindows().length === 0 && !isCreatingWindow) {
       createWindow();
     }
   });
