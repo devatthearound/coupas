@@ -81,8 +81,10 @@ jobs:
           # 기존 설치 정리
           rm -rf node_modules
           rm -f package-lock.json
-          # npm install로 재설치
-          npm install
+          # npm install로 재설치 (Rollup 오류 방지)
+          npm install --legacy-peer-deps
+          # Rollup optional dependencies 문제 해결
+          npm rebuild rollup
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish never --config.mac.identity=null --config.mac.target=zip
           else
@@ -101,8 +103,10 @@ jobs:
           # 기존 설치 정리
           if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }
           if (Test-Path package-lock.json) { Remove-Item package-lock.json }
-          # npm install로 재설치
-          npm install
+          # npm install로 재설치 (Rollup 오류 방지)
+          npm install --legacy-peer-deps
+          # Rollup optional dependencies 문제 해결
+          npm rebuild rollup
           npx electron-builder --win --${{ matrix.arch }} --publish never
       
       # 빌드 결과물을 릴리스에 업로드
