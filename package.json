@@ -95,17 +95,7 @@
     "copyright": "Copyright © 2025 The Around",
     "forceCodeSigning": false,
     "asar": true,
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "devatthearound",
-        "repo": "coupas",
-        "private": false,
-        "vPrefixedTagName": true,
-        "releaseType": "release",
-        "publishAutoUpdate": true
-      }
-    ],
+    "publish": null,
     "asarUnpack": [
       "node_modules/next",
       "node_modules/@img",
