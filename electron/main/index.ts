@@ -297,26 +297,53 @@ app.whenReady().then(() => {
   console.log("앱이 준비되었습니다.");
   
   // 프로토콜 등록을 더 일찍 수행
-  if (!app.isDefaultProtocolClient('coupas-auth')) {
-    app.setAsDefaultProtocolClient('coupas-auth');
-    console.log("프로토콜이 등록되었습니다.");
+  console.log('🔗 프로토콜 등록 시작...');
+  
+  // 기존 등록 확인
+  const isAlreadyDefault = app.isDefaultProtocolClient('coupas-auth');
+  console.log('📋 현재 프로토콜 등록 상태:', isAlreadyDefault);
+  
+  if (!isAlreadyDefault) {
+    const success = app.setAsDefaultProtocolClient('coupas-auth');
+    console.log('🎯 프로토콜 등록 시도 결과:', success);
+  } else {
+    console.log('✅ 프로토콜이 이미 등록되어 있습니다.');
+  }
+  
+  // 등록 후 재확인
+  const finalStatus = app.isDefaultProtocolClient('coupas-auth');
+  console.log('🔍 최종 프로토콜 등록 확인:', finalStatus);
+  
+  if (!finalStatus) {
+    console.error('❌ 프로토콜 등록 실패! macOS에서 수동 등록이 필요할 수 있습니다.');
   }
 
   protocol.handle('coupas-auth', async (request) => {
     try {
+      console.log('🔗 프로토콜 콜백 수신:', request.url);
       const url = new URL(request.url);
+      console.log('📍 프로토콜 패스:', url.pathname);
+      console.log('🔍 URL 파라미터:', url.searchParams.toString());
       
       if (url.pathname === '/login') {
         const accessToken = url.searchParams.get('coupas_access_token');
         const refreshToken = url.searchParams.get('coupas_refresh_token');
+        
+        console.log('🔑 받은 토큰:', {
+          accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : null,
+          refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : null
+        });
                 
         if (mainWindow && !mainWindow.isDestroyed()) {
+          console.log('📨 메인 윈도우에 auth-callback 이벤트 전송');
           mainWindow.webContents.send('auth-callback', { 
             accessToken, 
             refreshToken 
           });
           mainWindow.focus();
           return new Response('인증 성공');
+        } else {
+          console.error('❌ 메인 윈도우가 없거나 파괴됨');
         }
       } else if (url.pathname === '/google-auth/success') {
         const googleToken = url.searchParams.get('google_token');
@@ -350,22 +377,35 @@ app.whenReady().then(() => {
   // macOS를 위한 추가 처리
   app.on('open-url', (event, url) => {
     event.preventDefault();
+    console.log('🍎 macOS open-url 이벤트 수신:', url);
     try {
       // URL 정규화
       const normalizedUrl = url.replace('coupas-auth://', 'coupas-auth:///');
       const parsedUrl = new URL(normalizedUrl);
-            // pathname이 /login 또는 login인 경우를 모두 처리
+      console.log('📍 정규화된 URL:', normalizedUrl);
+      console.log('🔍 파싱된 패스:', parsedUrl.pathname);
+      console.log('📋 파라미터:', parsedUrl.searchParams.toString());
+      
+      // pathname이 /login 또는 login인 경우를 모두 처리
       if (parsedUrl.protocol === 'coupas-auth:' && 
           (parsedUrl.pathname === '/login' || parsedUrl.pathname === 'login')) {
         const accessToken = parsedUrl.searchParams.get('coupas_access_token');
         const refreshToken = parsedUrl.searchParams.get('coupas_refresh_token');
         
+        console.log('🔑 macOS에서 받은 토큰:', {
+          accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : null,
+          refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : null
+        });
+        
         if (mainWindow && !mainWindow.isDestroyed()) {
+          console.log('📨 macOS에서 메인 윈도우에 auth-callback 이벤트 전송');
           mainWindow.webContents.send('auth-callback', { 
             accessToken, 
             refreshToken 
           });
           mainWindow.focus();
+        } else {
+          console.error('❌ macOS: 메인 윈도우가 없거나 파괴됨');
         }
       } else if (parsedUrl.protocol === 'coupas-auth:' && 
                  (parsedUrl.pathname === '/google-auth/success' || parsedUrl.pathname === 'google-auth/success')) {
