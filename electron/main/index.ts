@@ -26,6 +26,7 @@ const originalConsole = {
 
 // 메인 윈도우 변수
 let mainWindow: BrowserWindow | null = null;
+let isCreatingWindow = false;
 
 // 콘솔 로그 래핑 함수
 function wrapConsole() {
@@ -243,9 +244,16 @@ function checkForUpdatesManually() {
 }
 
 const createWindow = async () => {
+  if (isCreatingWindow) {
+    console.log("윈도우 생성이 이미 진행 중입니다.");
+    return mainWindow;
+  }
+  
+  isCreatingWindow = true;
   console.log("윈도우 생성을 시작합니다...");
   
-  mainWindow = new BrowserWindow({
+  try {
+    mainWindow = new BrowserWindow({
     width: 1024,
     height: 768,
     webPreferences: {
@@ -315,6 +323,13 @@ const createWindow = async () => {
 
   await loadURL();
   return mainWindow;
+  } catch (error) {
+    console.error("윈도우 생성 중 오류 발생:", error);
+    isCreatingWindow = false;
+    throw error;
+  } finally {
+    isCreatingWindow = false;
+  }
 };
 
 const startNextJSServer = async () => {
@@ -521,7 +536,10 @@ app.whenReady().then(async () => {
 
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    console.log('App activated');
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
 
@@ -545,13 +563,6 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('처리되지 않은 Promise 거부:', reason, promise);
-});
-
-app.on('activate', () => {
-  console.log('App activated');
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
 });
 
 ipcMain.on('message', async (event, arg) => {
