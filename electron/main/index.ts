@@ -257,8 +257,12 @@ const createWindow = async () => {
   
   try {
     mainWindow = new BrowserWindow({
-    width: 1024,
-    height: 768,
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    titleBarStyle: 'default',
+    title: '쿠파스 - 제휴영상 만들기',
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       nodeIntegration: false, // 보안을 위해 false로 변경
@@ -275,6 +279,7 @@ const createWindow = async () => {
     console.log("윈도우가 표시될 준비가 되었습니다.");
     if (mainWindow) {
       mainWindow.show();
+      mainWindow.setTitle('쿠파스 - 제휴영상 만들기');
       setupLogMonitoring(mainWindow);  // 로그 모니터링 설정
       // 콘솔 래핑 초기화
       wrapConsole();
