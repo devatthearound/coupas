@@ -155,8 +155,7 @@
       "publisherName": "The Around",
       "verifyUpdateCodeSignature": false,
       "icon": "electron/assets/icon.ico",
-      "compression": "store",
-      "signIgnore": ["**/*"]
+      "compression": "store"
     },
     "nsis": {
       "oneClick": false,
