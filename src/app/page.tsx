@@ -17,7 +17,7 @@ export default function HomePage() {
   const limit = 5; // 기본값 5개 고정
   
   // 디폴트 HOT 키워드로 즉시 초기화 (API 실패/지연 대비)
-  const defaultHotKeywords = ['브레이크 패드', '휴대용 게임기', '디퓨저', '40대 가방', '타투 스티커'];
+  const defaultHotKeywords = ['무선 이어폰', '스마트워치', '공기청정기', '로봇청소기', '가습기'];
   const [trendingKeywords, setTrendingKeywords] = useState<string[]>(defaultHotKeywords);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
 
