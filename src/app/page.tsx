@@ -110,13 +110,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">키워드 검색</h1>
-          <div className="text-sm text-gray-500 dark:text-gray-400">1/2 단계</div>
+          <div className="ml-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">1/2 단계</div>
         </div>
 
-        <div className="flex gap-4 mb-4">
+        <div className="flex gap-4 mb-6">
           <input
             type="text"
             value={searchQuery}
@@ -124,16 +124,16 @@ export default function HomePage() {
             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSearch()}
             placeholder="검색어를 입력하세요"
             disabled={isLoading}
-            className={`flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+            className={`flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
               focus:ring-2 focus:ring-[#514FE4] dark:focus:ring-[#6C63FF] focus:border-transparent
-              bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all
+              bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all text-base
               ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
           <button
             onClick={() => handleSearch()}
             disabled={isLoading}
-            className={`px-6 py-2 bg-[#514FE4] hover:bg-[#4140B3] dark:bg-[#6C63FF] 
-              dark:hover:bg-[#5B54E8] text-white rounded-lg transition-all
+            className={`px-8 py-3 bg-[#514FE4] hover:bg-[#4140B3] dark:bg-[#6C63FF] 
+              dark:hover:bg-[#5B54E8] text-white rounded-lg transition-all font-medium
               ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'}`}
           >
             {isLoading ? (
@@ -168,22 +168,22 @@ export default function HomePage() {
           </p>
           
           {trendingKeywords.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {trendingKeywords.map((keyword, index) => (
                 <button
                   key={index}
                   onClick={() => handleSearch(keyword)}
                   disabled={isLoading}
                   title={`"${keyword}" 키워드로 바로 검색하기`}
-                  className={`group px-3 py-2 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
+                  className={`group px-4 py-3 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
                     dark:from-red-900/20 dark:to-orange-900/20 dark:hover:from-red-900/30 dark:hover:to-orange-900/30
-                    border border-red-200 dark:border-red-800 rounded-full text-sm font-medium 
+                    border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium 
                     text-red-700 dark:text-red-300 transition-all duration-200 hover:scale-105 hover:shadow-md
                     ${isLoading ? 'opacity-50 cursor-not-allowed transform-none hover:scale-100' : 'active:scale-95 cursor-pointer'}`}
                 >
-                  <span className="flex items-center gap-1 justify-center">
-                    <span className="text-xs group-hover:animate-bounce">🔥</span>
-                    <span className="truncate">{keyword}</span>
+                  <span className="flex items-center gap-2 justify-center">
+                    <span className="text-sm group-hover:animate-bounce">🔥</span>
+                    <span className="font-medium">{keyword}</span>
                     <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200">🔍</span>
                   </span>
                 </button>
