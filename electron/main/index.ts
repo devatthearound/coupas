@@ -322,18 +322,22 @@ const startNextJSServer = async () => {
     const nextJSPort = await getPort({ portRange: [30_011, 50_000] });
     const webDir = join(app.getAppPath(), "app");
 
+    console.log(`Next.js 서버 시작 시도: ${webDir} on port ${nextJSPort}`);
+
     await startServer({
       dir: webDir,
       isDev: false,
       hostname: "localhost",
       port: nextJSPort,
-      customServer: true,
-      allowRetry: false,
+      customServer: false,
+      allowRetry: true,
       keepAliveTimeout: 5000,
     });
 
+    console.log(`Next.js 서버 시작 성공: port ${nextJSPort}`);
     return nextJSPort;
   } catch (error) {
+    console.error('Next.js 서버 시작 실패:', error);
     throw error;
   }
 };

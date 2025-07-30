@@ -127,8 +127,8 @@ export async function middleware(request: NextRequest) {
 
   console.log("pathname", pathname);
   
-  // 개발 환경에서는 인증 우회
-  if (process.env.NODE_ENV === 'development') {
+  // 개발 환경 또는 Electron 환경에서는 인증 우회
+  if (process.env.NODE_ENV === 'development' || isElectronUserAgent(request)) {
     // localStorage 토큰 확인을 위한 헤더 추가
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', '7'); // 개발용 기본 사용자 ID
