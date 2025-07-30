@@ -126,6 +126,10 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
+  
+  // 코드 서명 검증 비활성화 (개발/테스트용)
+  autoUpdater.disableWebInstaller = true;
+  autoUpdater.autoRunAppAfterInstall = true;
 
   // 업데이트 이벤트 리스너
   autoUpdater.on('checking-for-update', () => {
@@ -161,28 +165,20 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    console.log('업데이트 다운로드 완료:');
+    console.log('업데이트 다운로드 완료:', info.version);
     
     if (mainWindow) {
       mainWindow.webContents.send('update-downloaded', info);
       
-      dialog.showMessageBox(mainWindow, {
-        type: 'info',
-        title: '업데이트 준비 완료',
-        message: `새 버전 ${info.version}이(가) 다운로드되었습니다. 지금 재시작하여 업데이트를 설치하시겠습니까?`,
-        buttons: ['예', '아니오'],
-        defaultId: 0
-      }).then((result) => {
-        if (result.response === 0) {
-          // Windows에서는 특별한 옵션으로 설치
-          if (process.platform === 'win32') {
-            autoUpdater.quitAndInstall(false, true);
-          } else {
-            autoUpdater.quitAndInstall();
-          }
+      // 팝업 없이 자동 설치 (3초 후)
+      setTimeout(() => {
+        console.log('자동 업데이트 설치 시작...');
+        if (process.platform === 'win32') {
+          autoUpdater.quitAndInstall(false, true);
         } else {
+          autoUpdater.quitAndInstall();
         }
-      });
+      }, 3000);
     }
   });
 
