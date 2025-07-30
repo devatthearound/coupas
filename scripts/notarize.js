@@ -25,6 +25,7 @@ exports.default = async function notarizing(context) {
     let retries = 3;
     while (retries > 0) {
       try {
+        console.log('공증 시작...');
         await notarize({
           appBundleId,
           tool: 'notarytool',
@@ -37,15 +38,18 @@ exports.default = async function notarizing(context) {
         return;
       } catch (retryError) {
         retries--;
-        if (retries === 0) throw retryError;
+        console.error(`공증 시도 실패 (${3 - retries}/3):`, retryError.message);
+        if (retries === 0) {
+          console.log('공증 실패했지만 빌드는 계속 진행합니다.');
+          return; // 빌드 실패 방지
+        }
         console.log(`공증 재시도 남은 횟수: ${retries}`);
-        // 재시도 전 3초 대기
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // 재시도 전 5초 대기
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
   } catch (error) {
-    console.error('공증 실패:', error);
-    // 빌드는 계속 진행 (CI에서 실패하지 않도록)
+    console.error('공증 중 예상치 못한 오류:', error);
     console.log('공증 실패했지만 빌드는 계속 진행합니다.');
   }
 };
