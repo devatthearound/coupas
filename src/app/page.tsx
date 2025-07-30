@@ -110,10 +110,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">키워드 검색</h1>
-          <div className="ml-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">1/2 단계</div>
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        <div className="flex items-center justify-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">키워드 검색</h1>
+          <div className="ml-3 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">1/2 단계</div>
         </div>
 
         <div className="flex gap-4 mb-6">
@@ -148,7 +148,7 @@ export default function HomePage() {
         </div>
 
         {/* 오늘의 추천 키워드 */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <FireIcon className="w-5 h-5 text-red-500" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">오늘의 HOT 키워드</h2>
@@ -175,7 +175,7 @@ export default function HomePage() {
                   onClick={() => handleSearch(keyword)}
                   disabled={isLoading}
                   title={`"${keyword}" 키워드로 바로 검색하기`}
-                  className={`group px-4 py-3 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
+                  className={`group px-3 py-2 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 
                     dark:from-red-900/20 dark:to-orange-900/20 dark:hover:from-red-900/30 dark:hover:to-orange-900/30
                     border border-red-200 dark:border-red-800 rounded-lg text-sm font-medium 
                     text-red-700 dark:text-red-300 transition-all duration-200 hover:scale-105 hover:shadow-md
@@ -199,7 +199,7 @@ export default function HomePage() {
         {/* Search Status */}
         {isLoading ? (
           // 검색 중일 때 표시할 로딩 UI
-          <div className="flex flex-col items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-8">
             <div className="w-16 h-16 mb-4">
               <svg className="animate-spin w-full h-full text-[#514FE4] dark:text-[#6C63FF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -214,7 +214,7 @@ export default function HomePage() {
           </div>
         ) : (
           // 검색 대기 중일 때 표시할 UI
-          <div className="flex flex-col items-center justify-center py-12">
+          <div className="flex flex-col items-center justify-center py-8">
             <div className="w-16 h-16 mb-4 text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
