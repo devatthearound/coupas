@@ -40,9 +40,6 @@ jobs:
       - name: Build Next.js
         run: npm run next:build
       
-      - name: Build Electron
-        run: npm run electron:build
-      
       # macOS 코드 서명 설정 (필요한 경우)
       - name: Import macOS certificates
         if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
@@ -85,6 +82,8 @@ jobs:
           npm install --legacy-peer-deps
           # Rollup optional dependencies 문제 해결
           npm rebuild rollup
+          # Electron 빌드 (tsup 대신 직접 실행)
+          npx tsup electron/main/index.ts --format cjs,esm --dts --external electron
           if [ "${{ matrix.arch }}" == "arm64" ]; then
             npx electron-builder --mac --arm64 --publish never --config.mac.identity=null --config.mac.target=zip
           else
@@ -107,6 +106,8 @@ jobs:
           npm install --legacy-peer-deps
           # Rollup optional dependencies 문제 해결
           npm rebuild rollup
+          # Electron 빌드 (tsup 대신 직접 실행)
+          npx tsup electron/main/index.ts --format cjs,esm --dts --external electron
           npx electron-builder --win --${{ matrix.arch }} --publish never
       
       # 빌드 결과물을 릴리스에 업로드
