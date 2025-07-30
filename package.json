@@ -176,7 +176,8 @@
       "signIgnore": ["**/*"],
       "entitlements": null,
       "entitlementsInherit": null,
-      "notarize": false
+      "notarize": false,
+      "type": "development"
     },
     "dmg": {
       "icon": "electron/assets/icon.icns",
@@ -193,7 +194,13 @@
           "path": "/Applications"
         }
       ],
-      "format": "ULFO"
+      "format": "ULFO",
+      "writeUpdateInfo": false,
+      "sign": false,
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     },
     "directories": {
       "output": "releases",
