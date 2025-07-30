@@ -285,6 +285,52 @@ export function UserProvider({ children }: { children: ReactNode }) {
       
       // 항상 fetchUser를 호출해서 현재 인증 상태 확인
       await fetchUser();
+      
+      // Electron 환경에서 글로벌 auth-callback 이벤트 리스너 설정
+      if (typeof window !== 'undefined' && (window as any).electron?.auth) {
+        console.log('🔧 UserContext: 글로벌 auth-callback 리스너 설정');
+        
+        (window as any).electron.auth.onAuthCallback((data: any) => {
+          console.log('🎉 UserContext: 글로벌 auth-callback 수신!', data);
+          
+          if (data.accessToken && data.refreshToken) {
+            console.log('🔑 토큰 처리 시작...');
+            
+            // localStorage에 저장
+            localStorage.setItem('coupas_access_token', data.accessToken);
+            console.log('💾 localStorage 저장 완료');
+            
+            // 쿠키에 저장
+            fetch('/api/auth/set-cookies', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            })
+            .then(async (response) => {
+              if (response.ok) {
+                console.log('🍪 쿠키 저장 성공');
+                await fetchUser(); // 사용자 정보 새로고침
+                console.log('🏠 메인 페이지로 이동');
+                
+                // 현재 external-redirect 페이지인 경우에만 이동
+                if (window.location.pathname.includes('external-redirect')) {
+                  window.location.href = '/';
+                } else {
+                  // 다른 페이지에서도 UI 업데이트를 위해 강제 리렌더링
+                  window.location.reload();
+                }
+              } else {
+                console.error('❌ 쿠키 저장 실패');
+              }
+            })
+            .catch((error) => {
+              console.error('❌ API 호출 실패:', error);
+            });
+          }
+        });
+        
+        console.log('✅ UserContext: 글로벌 리스너 설정 완료');
+      }
     };
 
     initializeAuth();

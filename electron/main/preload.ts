@@ -90,11 +90,25 @@ const electron = {
     auth: {
       // 기존 auth-callback 이벤트 리스너
       onAuthCallback: (callback: (data: any) => void) => {
+        console.log('🔧 Preload: auth-callback 리스너 설정 중...');
         ipcRenderer.removeAllListeners('auth-callback');
+        
         ipcRenderer.on('auth-callback', (_, data) => {
-          console.log('Preload: auth-callback received', data);
-          callback(data);
+          console.log('🎉 Preload: auth-callback 수신됨!', data);
+          console.log('🔑 받은 토큰 정보:', {
+            accessToken: data.accessToken ? `${data.accessToken.substring(0, 20)}...` : null,
+            refreshToken: data.refreshToken ? `${data.refreshToken.substring(0, 20)}...` : null
+          });
+          
+          try {
+            callback(data);
+            console.log('✅ Preload: 콜백 함수 실행 완료');
+          } catch (error) {
+            console.error('❌ Preload: 콜백 함수 실행 중 오류:', error);
+          }
         });
+        
+        console.log('✅ Preload: auth-callback 리스너 설정 완료');
       },
 
       // 기존 google-auth-success 이벤트 리스너
