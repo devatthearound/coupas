@@ -8,7 +8,7 @@ import { YouTubeUploader } from './quickstart.js';
 import fs from 'fs';
 import path from 'path';
 import { readFile } from 'fs/promises';
-import { autoUpdater } from 'electron-updater';
+// import { autoUpdater } from 'electron-updater'; // 임시로 주석 처리
 import { TemplateStore, VideoTemplate } from "./templateStore.js";
 
 console.log("일렉트론 메인 프로세스가 시작되었습니다.");
@@ -98,10 +98,11 @@ function setupLogMonitoring(mainWindow: BrowserWindow) {
  * 자동 업데이트 설정
  */
 function setupAutoUpdater() {
-  // 임시로 자동 업데이트 완전 비활성화 (코드 서명 문제 해결 후 재활성화)
-  console.log('자동 업데이트 임시 비활성화됨 (코드 서명 문제 해결 중)');
+  // 자동 업데이트 완전 비활성화 (코드 서명 문제 해결 후 재활성화)
+  console.log('자동 업데이트 완전 비활성화됨 (코드 서명 문제 해결 중)');
   return;
   
+  /*
   if (process.env.NODE_ENV === 'development') {
     // 개발 환경에서는 업데이트 비활성화
     return;
@@ -212,6 +213,7 @@ function setupAutoUpdater() {
   setTimeout(() => {
   autoUpdater.checkForUpdatesAndNotify();
   }, 10000); // 앱 시작 10초 후 첫 검사
+  */
 }
 
 // 수동 업데이트 확인 함수 (개발자용)
