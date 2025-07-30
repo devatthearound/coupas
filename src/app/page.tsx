@@ -16,24 +16,32 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const limit = 5; // 기본값 5개 고정
   
-  // 디폴트 HOT 키워드로 즉시 초기화 (API 실패/지연 대비)
+  // 디폴트 HOT 키워드 (API 실패 시에만 사용)
   const defaultHotKeywords = ['무선 이어폰', '스마트워치', '공기청정기', '로봇청소기', '가습기'];
-  const [trendingKeywords, setTrendingKeywords] = useState<string[]>(defaultHotKeywords);
-  const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
+  const [trendingKeywords, setTrendingKeywords] = useState<string[]>([]);
+  const [isLoadingKeywords, setIsLoadingKeywords] = useState(true);
 
-  // 추천 키워드 로드 (백그라운드에서 업데이트)
+  // 추천 키워드 로드 (YouTube 봇에서 수집된 실시간 데이터)
   const loadTrendingKeywords = async () => {
     try {
       setIsLoadingKeywords(true);
       const response = await fetch('/api/trending-keywords');
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.keywords?.length > 0) {
-          setTrendingKeywords(data.keywords);
+        if (data.success && data.data?.keywords?.length > 0) {
+          setTrendingKeywords(data.data.keywords);
+          console.log('YouTube 봇에서 수집된 키워드:', data.data.keywords);
+        } else {
+          console.log('API에서 키워드를 찾을 수 없음, 기본 키워드 사용');
+          setTrendingKeywords(defaultHotKeywords);
         }
+      } else {
+        console.error('API 응답 오류:', response.status);
+        setTrendingKeywords(defaultHotKeywords);
       }
     } catch (error) {
       console.error('추천 키워드 로드 실패:', error);
+      setTrendingKeywords(defaultHotKeywords);
     } finally {
       setIsLoadingKeywords(false);
     }
@@ -167,7 +175,14 @@ export default function HomePage() {
             👆 키워드를 클릭하면 바로 검색이 시작됩니다
           </p>
           
-          {trendingKeywords.length > 0 ? (
+          {isLoadingKeywords ? (
+            <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                YouTube 봇에서 실시간 키워드를 수집 중입니다...
+              </div>
+            </div>
+          ) : trendingKeywords.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {trendingKeywords.map((keyword, index) => (
                 <button
@@ -191,7 +206,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              💡 키워드를 불러오는 중입니다. 잠시만 기다려주세요...
+              💡 YouTube 봇에서 키워드를 수집하지 못했습니다. 기본 키워드를 사용합니다.
             </div>
           )}
         </div>
