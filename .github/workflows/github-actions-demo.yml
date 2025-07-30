@@ -72,9 +72,9 @@ jobs:
           CSC_NAME: ''
         run: |
           if [ "${{ matrix.arch }}" == "arm64" ]; then
-            npx electron-builder --mac --arm64 --publish always --config.mac.identity=null
+            npx electron-builder --mac --arm64 --publish always --config.mac.identity=null --config.mac.target=zip
           else
-            npx electron-builder --mac --x64 --publish always --config.mac.identity=null
+            npx electron-builder --mac --x64 --publish always --config.mac.identity=null --config.mac.target=zip
           fi
       
       # Windows 빌드
