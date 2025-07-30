@@ -720,51 +720,56 @@ ipcMain.handle('read-file-as-data-url', async (_, filePath) => {
   }
 });
 
-// 싱글 인스턴스 보장
-console.log("싱글 인스턴스 잠금을 요청합니다...");
-const gotTheLock = app.requestSingleInstanceLock();
+// 싱글 인스턴스 보장 (개발 모드에서는 비활성화)
+if (!isDev) {
+  console.log("싱글 인스턴스 잠금을 요청합니다...");
+  const gotTheLock = app.requestSingleInstanceLock();
 
-if (!gotTheLock) {
-  console.log("앱이 이미 실행 중입니다. 종료합니다.");
-  app.quit();
+  if (!gotTheLock) {
+    console.log("앱이 이미 실행 중입니다. 종료합니다.");
+    app.quit();
+  } else {
+    console.log("싱글 인스턴스 잠금을 획득했습니다.");
+  }
 } else {
-  console.log("싱글 인스턴스 잠금을 획득했습니다.");
-  app.on('second-instance', (event, commandLine) => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-      
-      // URL 프로토콜로 실행된 경우 처리
-      const protocolUrl = commandLine.find(arg => arg.startsWith('coupas-auth://'));
-      if (protocolUrl) {
-        try {
-          const url = new URL(protocolUrl);
+  console.log("개발 모드: 싱글 인스턴스 잠금을 비활성화합니다.");
+}
+
+app.on('second-instance', (event, commandLine) => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+    
+    // URL 프로토콜로 실행된 경우 처리
+    const protocolUrl = commandLine.find(arg => arg.startsWith('coupas-auth://'));
+    if (protocolUrl) {
+      try {
+        const url = new URL(protocolUrl);
+        
+        if (url.pathname.includes('google-auth/success')) {
+          const googleToken = url.searchParams.get('google_token');
+          const accessToken = url.searchParams.get('access_token');
           
-          if (url.pathname.includes('google-auth/success')) {
-            const googleToken = url.searchParams.get('google_token');
-            const accessToken = url.searchParams.get('access_token');
-            
-            mainWindow.webContents.send('google-auth-success', { 
-              googleToken, 
-              accessToken,
-              success: true 
-            });
-          } else if (url.pathname.includes('login')) {
-            const accessToken = url.searchParams.get('coupas_access_token');
-            const refreshToken = url.searchParams.get('coupas_refresh_token');
-            
-            mainWindow.webContents.send('auth-callback', { 
-              accessToken, 
-              refreshToken 
-            });
-          }
-        } catch (error) {
-          console.error('URL 파싱 중 오류:', error);
+          mainWindow.webContents.send('google-auth-success', { 
+            googleToken, 
+            accessToken,
+            success: true 
+          });
+        } else if (url.pathname.includes('login')) {
+          const accessToken = url.searchParams.get('coupas_access_token');
+          const refreshToken = url.searchParams.get('coupas_refresh_token');
+          
+          mainWindow.webContents.send('auth-callback', { 
+            accessToken, 
+            refreshToken 
+          });
         }
+      } catch (error) {
+        console.error('URL 파싱 중 오류:', error);
       }
     }
-  });
-}
+  }
+});
 
 // 폴더 열기 핸들러 추가
 ipcMain.handle('open-folder', async (_, folderPath) => {

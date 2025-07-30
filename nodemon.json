@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/nodemon.json",
-  "exec": "electron .",
+  "exec": "electron build/index.js",
   "watch": ["build"],
   "ignore": ["public/build", ".turbo", "node_modules"],
   "env": {
