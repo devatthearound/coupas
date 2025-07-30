@@ -1,0 +1,18 @@
+{
+  "coupang": {
+    "accessKey": "your_coupang_access_key_here",
+    "secretKey": "your_coupang_secret_key_here",
+    "enabled": true,
+    "updatedAt": "2025-01-01T00:00:00.000Z"
+  },
+  "aliexpress": {
+    "accessKey": "your_aliexpress_access_key_here",
+    "secretKey": "your_aliexpress_secret_key_here",
+    "enabled": false
+  },
+  "amazon": {
+    "accessKey": "your_amazon_access_key_here",
+    "secretKey": "your_amazon_secret_key_here",
+    "enabled": false
+  }
+}
