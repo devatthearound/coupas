@@ -16,7 +16,7 @@ exports.default = async function notarizing(context) {
   }
 
   const appName = context.packager.appInfo.productFilename;
-  const appBundleId = build.appId || 'com.growsome.coupas';
+  const appBundleId = build.appBundleId || build.appId || 'com.growsome.coupas';
 
   console.log(`공증 시작: ${appName}`);
 
