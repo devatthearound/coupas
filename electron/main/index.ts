@@ -308,16 +308,36 @@ const createWindow = async () => {
       for (const port of devPorts) {
         try {
           console.log(`포트 ${port}로 연결 시도...`);
-          await mainWindow?.loadURL(`http://localhost:${port}`);
-          console.log(`포트 ${port} 연결 성공`);
-          return;
+          const response = await fetch(`http://localhost:${port}/api/healthy`);
+          if (response.ok) {
+            await mainWindow?.loadURL(`http://localhost:${port}`);
+            console.log(`포트 ${port} 연결 성공`);
+            return;
+          }
         } catch (error) {
           console.error(`포트 ${port} 연결 실패:`, error);
           continue;
         }
       }
       
-      console.error("모든 포트 연결 실패");
+      console.error("모든 포트 연결 실패 - Next.js 서버가 실행되지 않았습니다.");
+      console.log("Next.js 서버를 먼저 시작해주세요: npm run next:dev");
+      
+      // 오류 메시지를 윈도우에 표시
+      if (mainWindow) {
+        mainWindow.loadURL(`data:text/html,
+          <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+              <h2>🚨 Next.js 서버가 실행되지 않았습니다</h2>
+              <p>터미널에서 다음 명령을 실행해주세요:</p>
+              <code style="background: #f0f0f0; padding: 10px; display: block; margin: 20px 0;">
+                npm run next:dev
+              </code>
+              <p>서버가 시작되면 앱을 다시 실행해주세요.</p>
+            </body>
+          </html>
+        `);
+      }
     } else {
       try {
         port = await startNextJSServer();
@@ -325,6 +345,7 @@ const createWindow = async () => {
         await mainWindow?.loadURL(`http://localhost:${port}`);
         console.log("프로덕션 서버 연결 성공");
       } catch (error) {
+        console.error("프로덕션 서버 시작 실패:", error);
       }
     }
   };
