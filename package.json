@@ -155,7 +155,8 @@
       "publisherName": "The Around",
       "verifyUpdateCodeSignature": false,
       "icon": "electron/assets/icon.ico",
-      "compression": "store"
+      "compression": "store",
+      "signIgnore": ["**/*"]
     },
     "nsis": {
       "oneClick": false,
@@ -181,7 +182,8 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "identity": null
+      "identity": null,
+      "signIgnore": ["**/*"]
     },
     "dmg": {
       "icon": "electron/assets/icon.icns",
