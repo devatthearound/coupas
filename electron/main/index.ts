@@ -98,6 +98,10 @@ function setupLogMonitoring(mainWindow: BrowserWindow) {
  * 자동 업데이트 설정
  */
 function setupAutoUpdater() {
+  // 임시로 자동 업데이트 완전 비활성화 (코드 서명 문제 해결 후 재활성화)
+  console.log('자동 업데이트 임시 비활성화됨 (코드 서명 문제 해결 중)');
+  return;
+  
   if (process.env.NODE_ENV === 'development') {
     // 개발 환경에서는 업데이트 비활성화
     return;
@@ -208,6 +212,29 @@ function setupAutoUpdater() {
   setTimeout(() => {
   autoUpdater.checkForUpdatesAndNotify();
   }, 10000); // 앱 시작 10초 후 첫 검사
+}
+
+// 수동 업데이트 확인 함수 (개발자용)
+function checkForUpdatesManually() {
+  console.log('수동 업데이트 확인 시작...');
+  
+  // GitHub에서 최신 릴리즈 정보 가져오기
+  fetch('https://api.github.com/repos/devatthearound/coupas/releases/latest')
+    .then(response => response.json())
+    .then(data => {
+      console.log('최신 버전 정보:', data.tag_name);
+      
+      if (mainWindow) {
+        mainWindow.webContents.send('manual-update-info', {
+          version: data.tag_name,
+          downloadUrl: data.html_url,
+          body: data.body
+        });
+      }
+    })
+    .catch(error => {
+      console.error('수동 업데이트 확인 실패:', error);
+    });
 }
 
 const createWindow = async () => {
@@ -321,6 +348,11 @@ app.whenReady().then(() => {
     console.log('✅ 프로토콜이 이미 등록되어 있습니다.');
   }
   
+  // 수동 업데이트 확인 IPC 핸들러
+  ipcMain.handle('check-updates-manually', () => {
+    checkForUpdatesManually();
+  });
+
   // 등록 후 재확인
   const finalStatus = app.isDefaultProtocolClient('coupas-auth');
   console.log('🔍 최종 프로토콜 등록 확인:', finalStatus);

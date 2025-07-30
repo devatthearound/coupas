@@ -150,7 +150,8 @@ const electron = {
           'download-progress',
           'update-downloaded',
           'update-error',
-          'console-message'
+          'console-message',
+          'manual-update-info'
       ];
       if (validChannels.includes(channel)) {
           ipcRenderer.on(channel, (_, ...args) => callback(...args));
@@ -159,7 +160,10 @@ const electron = {
     
     removeAllListeners: (channel: string) => {
         ipcRenderer.removeAllListeners(channel);
-    }
+    },
+
+    // 수동 업데이트 확인
+    checkUpdatesManually: () => ipcRenderer.invoke('check-updates-manually')
 }
 
 contextBridge.exposeInMainWorld('electron', electron)
