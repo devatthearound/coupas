@@ -33,23 +33,27 @@ export default function Navbar({
   const [isApiConfigured, setIsApiConfigured] = useState(false);
   const { user, logout, setDevToken } = useUser();
   
-  // 사용자 상태 디버깅
-  console.log('👤 Navbar - 현재 사용자 상태:', user);
-  console.log('🔄 Navbar - 사용자 로딩 상태:', user === null ? '로그인 안됨' : '로그인됨');
-  console.log('🌍 Navbar - 현재 환경:', isElectron() ? 'Electron' : 'Web');
+  // 사용자 상태 디버깅 (빌드 시 로그 최소화)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('👤 Navbar - 현재 사용자 상태:', user);
+    console.log('🔄 Navbar - 사용자 로딩 상태:', user === null ? '로그인 안됨' : '로그인됨');
+    console.log('🌍 Navbar - 현재 환경:', isElectron() ? 'Electron' : 'Web');
+  }
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // 일렉트론 환경 디버깅 useEffect
+  // 일렉트론 환경 디버깅 useEffect (빌드 시 로그 최소화)
   useEffect(() => {
-    console.log('🔧 === Navbar 컴포넌트 마운트 - 환경 진단 ===');
-    console.log('🌍 isElectron():', isElectron());
-    console.log('🖥️ window.electron 존재:', !!(window as any).electron);
-    console.log('📱 navigator.userAgent:', navigator.userAgent);
-    console.log('📋 confirm 함수 존재:', typeof confirm !== 'undefined');
-    console.log('📋 alert 함수 존재:', typeof alert !== 'undefined');
-    console.log('🔄 process 객체:', !!(window as any).process);
-    console.log('🔧 process.versions:', (window as any).process?.versions);
-    console.log('🔧 === 환경 진단 완료 ===');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 === Navbar 컴포넌트 마운트 - 환경 진단 ===');
+      console.log('🌍 isElectron():', isElectron());
+      console.log('🖥️ window.electron 존재:', !!(window as any).electron);
+      console.log('📱 navigator.userAgent:', navigator.userAgent);
+      console.log('📋 confirm 함수 존재:', typeof confirm !== 'undefined');
+      console.log('📋 alert 함수 존재:', typeof alert !== 'undefined');
+      console.log('🔄 process 객체:', !!(window as any).process);
+      console.log('🔧 process.versions:', (window as any).process?.versions);
+      console.log('🔧 === 환경 진단 완료 ===');
+    }
   }, []);
 
   // useEffect(() => {
