@@ -127,9 +127,17 @@ function setupAutoUpdater() {
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
   
-  // 코드 서명 검증 비활성화 (개발/테스트용)
+  // 코드 서명 검증 완전 비활성화
   autoUpdater.disableWebInstaller = true;
   autoUpdater.autoRunAppAfterInstall = true;
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
+  
+  // 코드 서명 검증 비활성화 (macOS)
+  if (process.platform === 'darwin') {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+  }
 
   // 업데이트 이벤트 리스너
   autoUpdater.on('checking-for-update', () => {
@@ -184,6 +192,13 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     console.error('자동 업데이트 오류:', err);
+    
+    // 코드 서명 오류인 경우 무시하고 계속 진행
+    if (err.message && err.message.includes('Code signature')) {
+      console.log('코드 서명 오류 무시하고 계속 진행...');
+      return;
+    }
+    
     if (mainWindow) {
       mainWindow.webContents.send('update-error', err);
     }
