@@ -369,12 +369,23 @@ const startNextJSServer = async () => {
 // Electron 앱 초기화
 app.whenReady().then(async () => {
   console.log("Electron 앱이 준비되었습니다.");
+  console.log("현재 작업 디렉토리:", process.cwd());
+  console.log("앱 경로:", app.getAppPath());
+  console.log("실행 파일 경로:", process.execPath);
   
   try {
     await createWindow();
     console.log("메인 윈도우 생성 완료");
   } catch (error) {
     console.error("윈도우 생성 중 오류 발생:", error);
+    // 오류가 발생해도 앱이 종료되지 않도록 함
+    setTimeout(() => {
+      console.log("오류 후 재시도...");
+      createWindow().catch(e => {
+        console.error("재시도 실패:", e);
+        app.quit();
+      });
+    }, 1000);
   }
   console.log("앱이 준비되었습니다.");
   
