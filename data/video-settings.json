@@ -9,5 +9,27 @@
     "outputDirectory": "/Users/hyunjucho/Documents/Coupas",
     "createdAt": "2025-07-29T02:49:36.058Z",
     "updatedAt": "2025-07-29T02:49:36.058Z"
+  },
+  {
+    "id": "1753919432043",
+    "name": "테스트템플릿",
+    "introVideo": "/test/intro.mp4",
+    "outroVideo": "/test/outro.mp4",
+    "backgroundMusic": "/test/music.mp3",
+    "imageDisplayDuration": 3,
+    "outputDirectory": "/test/output",
+    "createdAt": "2025-07-30T23:50:32.043Z",
+    "updatedAt": "2025-07-30T23:50:32.043Z"
+  },
+  {
+    "id": "1753920453220",
+    "name": "실제테스트",
+    "introVideo": "/Users/hyunjucho/Documents/Coupas/자동화/intro.mp4",
+    "outroVideo": "/Users/hyunjucho/Documents/Coupas/자동화/outro.mp4",
+    "backgroundMusic": "/Users/hyunjucho/Documents/Coupas/자동화/BalloonPlanet - Cool My Bass.mp3",
+    "imageDisplayDuration": 3,
+    "outputDirectory": "/Users/hyunjucho/Documents/Coupas",
+    "createdAt": "2025-07-31T00:07:33.220Z",
+    "updatedAt": "2025-07-31T00:07:33.220Z"
   }
 ]

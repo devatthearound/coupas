@@ -9,8 +9,8 @@ export default function VideoTemplatesPage() {
   
   // 영상 설정 상태들
   const [videoSettings, setVideoSettings] = useState({
-    introVideo: null as string | null,
-    outroVideo: null as string | null,
+    introVideo: '',
+    outroVideo: '',
     backgroundMusic: '',
     imageDisplayDuration: 3,
     outputDirectory: ''
@@ -20,8 +20,8 @@ export default function VideoTemplatesPage() {
   const [templates, setTemplates] = useState<Array<{
     id: string;
     name: string;
-    introVideo: string | null;
-    outroVideo: string | null;
+    introVideo: string;
+    outroVideo: string;
     backgroundMusic: string;
     imageDisplayDuration: number;
     outputDirectory: string;
@@ -74,12 +74,20 @@ export default function VideoTemplatesPage() {
   }, []);
 
   const saveTemplate = useCallback(async () => {
+    console.log('템플릿 저장 시작:', { templateName, videoSettings });
+    
     if (!templateName.trim()) {
       toast.error('템플릿 이름을 입력해주세요.');
       return;
     }
 
     if (!videoSettings.introVideo || !videoSettings.outroVideo || !videoSettings.backgroundMusic || !videoSettings.outputDirectory) {
+      console.log('설정 누락:', {
+        introVideo: videoSettings.introVideo,
+        outroVideo: videoSettings.outroVideo,
+        backgroundMusic: videoSettings.backgroundMusic,
+        outputDirectory: videoSettings.outputDirectory
+      });
       toast.error('모든 영상 설정을 완료해주세요.');
       return;
     }
@@ -94,6 +102,8 @@ export default function VideoTemplatesPage() {
         outputDirectory: videoSettings.outputDirectory
       };
 
+      console.log('API 요청 데이터:', templateData);
+
       const response = await fetch('/api/video-settings', {
         method: 'POST',
         headers: {
@@ -102,7 +112,9 @@ export default function VideoTemplatesPage() {
         body: JSON.stringify(templateData),
       });
 
+      console.log('API 응답 상태:', response.status);
       const data = await response.json();
+      console.log('API 응답 데이터:', data);
 
       if (data.success) {
         await loadTemplates();
@@ -110,6 +122,7 @@ export default function VideoTemplatesPage() {
         setIsTemplateModalOpen(false);
         toast.success('템플릿이 저장되었습니다!');
       } else {
+        console.error('API 오류:', data.error);
         toast.error(data.error || '템플릿 저장에 실패했습니다.');
       }
     } catch (error) {
@@ -227,8 +240,8 @@ export default function VideoTemplatesPage() {
   // 현재 설정 초기화
   const resetSettings = () => {
     setVideoSettings({
-      introVideo: null,
-      outroVideo: null,
+      introVideo: '',
+      outroVideo: '',
       backgroundMusic: '',
       imageDisplayDuration: 3,
       outputDirectory: ''
@@ -568,7 +581,13 @@ export default function VideoTemplatesPage() {
                 취소
               </button>
               <button
-                onClick={saveTemplate}
+                onClick={() => {
+                  if (!templateName.trim()) {
+                    toast.error('템플릿 이름을 입력해주세요.');
+                    return;
+                  }
+                  saveTemplate();
+                }}
                 className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
               >
                 저장
