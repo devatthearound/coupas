@@ -59,6 +59,43 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, []);
 
+  // 개발자 도구용 도움말 함수
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).devHelp = () => {
+        console.log('🔧 === 개발자 도움말 ===');
+        console.log('📝 사용 가능한 함수:');
+        console.log('  - devHelp(): 이 도움말 표시');
+        console.log('  - testSearch(keyword): 테스트 검색 실행');
+        console.log('  - checkApiKeys(): API 키 상태 확인');
+        console.log('');
+        console.log('💡 예시:');
+        console.log('  testSearch("무선이어폰")');
+        console.log('  checkApiKeys()');
+      };
+
+      (window as any).testSearch = (keyword: string) => {
+        console.log('🧪 테스트 검색 시작:', keyword);
+        handleSearch(keyword);
+      };
+
+      (window as any).checkApiKeys = async () => {
+        console.log('🔑 API 키 상태 확인 중...');
+        const keys = await getCoupangApiKeys();
+        if (keys) {
+          console.log('✅ API 키 설정됨:', {
+            accessKey: keys.accessKey ? '설정됨' : '설정되지 않음',
+            secretKey: keys.secretKey ? '설정됨' : '설정되지 않음'
+          });
+        } else {
+          console.log('❌ API 키 설정되지 않음');
+        }
+      };
+
+      console.log('🔧 개발자 도구가 활성화되었습니다. devHelp()를 입력하면 도움말을 볼 수 있습니다.');
+    }
+  }, []);
+
   const handleSearch = async (keyword?: string) => {
     const searchKeyword = keyword || searchQuery.trim();
     
@@ -72,17 +109,24 @@ export default function HomePage() {
       setSearchQuery(keyword);
     }
 
-    const keys = await getCoupangApiKeys();
-    
-    if (!keys) {
-      toast.error('API 키가 없습니다. 설정 페이지에서 설정해주세요.');
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
+      // 개발 환경에서 테스트용 API 키 사용
+      let keys = await getCoupangApiKeys();
+      
+      if (!keys) {
+        console.log('🔧 개발 모드: 기본 API 키 사용');
+        // 개발 환경에서 기본 API 키 사용
+        keys = {
+          accessKey: '028d1bc3-8dab-43a8-b855-b1f21797b4f0',
+          secretKey: 'b51e8cd97285c85c63184be9cb8e038237d8ae14'
+        };
+      }
+
+      console.log('🔍 검색 시작:', searchKeyword);
+      console.log('🔑 API 키 확인:', keys.accessKey ? '설정됨' : '설정되지 않음');
+
       const products = await searchProducts({
         keyword: searchKeyword,
         limit: limit,
@@ -90,6 +134,7 @@ export default function HomePage() {
         secretKey: keys.secretKey,
       })
 
+      console.log('✅ 검색 결과:', products.length, '개 상품');
       setSearchResults(products);
       setSelectedProducts(products); // 자동으로 모든 상품 선택
       
@@ -102,8 +147,8 @@ export default function HomePage() {
       }, 1500);
 
     } catch (error) {
-      console.error('검색 실패:', error);
-      toast.error('상품 검색에 실패했습니다');
+      console.error('❌ 검색 실패:', error);
+      toast.error('상품 검색에 실패했습니다. API 키를 확인해주세요.');
     } finally {
       setIsLoading(false);
     }

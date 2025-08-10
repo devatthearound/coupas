@@ -454,11 +454,16 @@ function VideoCreationContent() {
         }
         toast.success('비디오 합성이 완료되었습니다!');
         
-        // 폴더 열기 확인 팝업
-        if (confirm('영상 생성이 완료되었습니다. 해당 폴더를 여시겠습니까?')) {
-          await window.electron.openFolder(outputDirectory);
+        // 완료 페이지로 이동
+        const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
+        let url = `/video-complete?videoTitle=${encodeURIComponent(videoTitle)}&videoPath=${encodeURIComponent(result.outputPath)}&outputDirectory=${encodeURIComponent(outputDirectory)}`;
+        
+        if (selectedProducts.length > 0) {
+          url += `&products=${productsParam}`;
         }
-        setIsPreviewModalOpen(true);
+        
+        console.log('완료 페이지로 이동:', url);
+        router.push(url);
       } else {
         setProgress('');
         toast.error(`합성 실패: ${result.error}`);

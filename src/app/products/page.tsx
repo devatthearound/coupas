@@ -543,18 +543,22 @@ function ProductsContent() {
         outputDirectory: template.outputDirectory
       });
 
-      toast.success('영상 생성이 완료되었습니다! 업로드 페이지로 이동합니다...');
+      toast.success('영상 생성이 완료되었습니다! 완료 페이지로 이동합니다...');
 
-      // 2초 후 자동으로 업로드 페이지로 이동
+      // 2초 후 자동으로 완료 페이지로 이동
       setTimeout(() => {
         const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
-        let url = `/video-upload?products=${productsParam}&generatedVideo=${encodeURIComponent(videoResult.outputPath)}&videoTitle=${encodeURIComponent(videoTitle)}`;
+        let url = `/video-complete?videoTitle=${encodeURIComponent(videoTitle)}&videoPath=${encodeURIComponent(videoResult.outputPath)}&outputDirectory=${encodeURIComponent(template.outputDirectory)}`;
         
         if (searchKeyword) {
           url += `&keyword=${encodeURIComponent(searchKeyword)}`;
         }
         
-        console.log('업로드 페이지로 이동:', url);
+        if (selectedProducts.length > 0) {
+          url += `&products=${productsParam}`;
+        }
+        
+        console.log('완료 페이지로 이동:', url);
         router.push(url);
       }, 2000);
 
@@ -1022,12 +1026,13 @@ function ProductsContent() {
                   
                   <button
                     onClick={() => {
-                      const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
-                      let url = `/video-upload?products=${productsParam}&generatedVideo=${encodeURIComponent(generatedVideoInfo.outputPath)}&videoTitle=${encodeURIComponent(generatedVideoInfo.videoTitle)}`;
-                      if (searchKeyword) {
-                        url += `&keyword=${encodeURIComponent(searchKeyword)}`;
-                      }
-                      router.push(url);
+                      // 상품 정보를 세션에 저장
+                      sessionStorage.setItem('coupang-selected-products', JSON.stringify(selectedProducts));
+                      console.log('유튜브 업로드 페이지로 이동 - 상품 정보 저장:', selectedProducts);
+                      
+                      // 유튜브 업로드 페이지로 이동 (영상 경로 전달)
+                      const videoPath = encodeURIComponent(generatedVideoInfo.outputPath);
+                      router.push(`/youtube?videoPath=${videoPath}`);
                     }}
                     className="px-6 py-2.5 rounded-lg transition-all duration-200 font-medium flex items-center gap-2
                       bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-xl"

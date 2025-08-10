@@ -111,11 +111,19 @@ export async function GET(request: NextRequest) {
     const userId = request.headers.get('x-user-id');
     const userEmail = request.headers.get('x-user-email');
 
+    console.log('🔍 상품 검색 API 호출됨');
+    console.log('👤 사용자 ID:', userId);
+    console.log('📧 사용자 이메일:', userEmail);
+
     try {
         const accessKey = request.headers.get('X-Coupang-Access-Key');
         const secretKey = request.headers.get('X-Coupang-Secret-Key');
 
+        console.log('🔑 Access Key:', accessKey ? '제공됨' : '제공되지 않음');
+        console.log('🔒 Secret Key:', secretKey ? '제공됨' : '제공되지 않음');
+
         if (!accessKey || !secretKey) {
+            console.error('❌ API 키 누락');
             return NextResponse.json(
                 { rCode: '-1', rMessage: '쿠팡 API 키가 제공되지 않았습니다' },
                 { status: 400 }
@@ -124,8 +132,14 @@ export async function GET(request: NextRequest) {
 
         const searchParams = request.nextUrl.searchParams;
         const keyword = searchParams.get('keyword');
+        const limit = searchParams.get('limit');
+
+        console.log('🔍 검색 파라미터:');
+        console.log('  - 키워드:', keyword);
+        console.log('  - 제한:', limit);
 
         if (!keyword) {
+            console.error('❌ 검색 키워드 누락');
             return NextResponse.json(
                 { message: '검색 키워드는 필수입니다.' },
                 { status: 400 }
@@ -135,9 +149,11 @@ export async function GET(request: NextRequest) {
         // 검색 파라미터 구성
         const params: SearchParams = {
             keyword,
-            limit: Number(searchParams.get('limit')) || 10,
+            limit: Number(limit) || 10,
             // srpLinkOnly: searchParams.get('srpLinkOnly') === 'true'
         };
+
+        console.log('📋 구성된 검색 파라미터:', params);
 
 
         // URL 파라미터 생성
@@ -150,6 +166,9 @@ export async function GET(request: NextRequest) {
 
         const apiUrl = `/v2/providers/affiliate_open_api/apis/openapi/products/search?${queryString.toString()}`;
 
+        console.log('🌐 쿠팡 API URL:', apiUrl);
+        console.log('🔗 전체 URL:', COUPANG_API_CONFIG.DOMAIN + apiUrl);
+
         const authorization = generateHmac(
             'GET',
             apiUrl,
@@ -157,6 +176,9 @@ export async function GET(request: NextRequest) {
             accessKey
         );
 
+        console.log('🔐 Authorization 헤더 생성 완료');
+
+        console.log('📡 쿠팡 API 호출 시작...');
         const response = await axios.request({
             method: 'GET',
             baseURL: COUPANG_API_CONFIG.DOMAIN,
@@ -167,12 +189,18 @@ export async function GET(request: NextRequest) {
             }
         });
 
+        console.log('✅ 쿠팡 API 응답 성공:', response.status);
+
 
         // 검색 결과에서 상품 데이터 추출
         const products = response.data.data.productData;
+        console.log('📊 검색된 상품 개수:', products.length);
+        
         // const productUrls = products.map((product: ProductData) => `https://www.coupang.com/vp/products/${product.productId}`);
         // itemId= 추출
         const productUrls = products.map((product: ProductData) => `https://www.coupang.com/vp/products/${product.productId}?itemId=${product.productUrl.split('itemId=')[1].split('&')[0]}`);
+        
+        console.log('🔗 생성된 상품 URL 개수:', productUrls.length);
 
         // 각 상품의 productUrl에 대해 deeplink API 호출
 

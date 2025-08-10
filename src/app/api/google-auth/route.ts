@@ -46,6 +46,19 @@ const writeGoogleTokens = (tokens: any) => {
 // Get auth URL
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔐 Google Auth URL 생성 요청');
+    console.log('🔑 CLIENT_ID:', CLIENT_ID ? '설정됨' : '설정되지 않음');
+    console.log('🔒 CLIENT_SECRET:', CLIENT_SECRET ? '설정됨' : '설정되지 않음');
+    console.log('🔄 REDIRECT_URI:', REDIRECT_URI);
+    
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error('❌ Google OAuth 설정이 누락되었습니다.');
+      return NextResponse.json(
+        { message: 'Google OAuth 설정이 누락되었습니다.' },
+        { status: 500 }
+      );
+    }
+
     const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
     
     const authUrl = oauth2Client.generateAuthUrl({
@@ -54,9 +67,10 @@ export async function GET(request: NextRequest) {
       scope: SCOPES
     });
 
+    console.log('✅ 인증 URL 생성 완료:', authUrl);
     return NextResponse.json({ authUrl });
   } catch (error) {
-    console.error('Error generating auth URL:', error);
+    console.error('❌ Error generating auth URL:', error);
     return NextResponse.json(
       { message: '인증 URL 생성 중 오류가 발생했습니다.' },
       { status: 500 }
@@ -67,21 +81,45 @@ export async function GET(request: NextRequest) {
 // Exchange code for tokens
 export async function POST(request: NextRequest) {
   try {
-    const { code } = await request.json();
+    console.log('🔐 Google Auth API 호출됨');
+    console.log('🔑 CLIENT_ID:', CLIENT_ID ? '설정됨' : '설정되지 않음');
+    console.log('🔒 CLIENT_SECRET:', CLIENT_SECRET ? '설정됨' : '설정되지 않음');
+    console.log('🔄 REDIRECT_URI:', REDIRECT_URI);
+    
+    const { code, state } = await request.json();
+    console.log('📋 받은 코드:', code ? '있음' : '없음');
+    console.log('🔍 받은 state:', state);
     
     if (!code) {
+      console.error('❌ 인증 코드가 없습니다.');
       return NextResponse.json(
         { message: '인증 코드가 필요합니다.' },
         { status: 400 }
       );
     }
 
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error('❌ Google OAuth 설정이 누락되었습니다.');
+      return NextResponse.json(
+        { message: 'Google OAuth 설정이 누락되었습니다.' },
+        { status: 500 }
+      );
+    }
+
     const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+    console.log('🔧 OAuth2Client 생성 완료');
     
     // 인증 코드를 토큰으로 교환
+    console.log('🔄 토큰 교환 시작...');
     const { tokens } = await oauth2Client.getToken(code);
     
+    console.log('✅ 토큰 교환 완료');
+    console.log('🔑 Access Token:', tokens.access_token ? '받음' : '없음');
+    console.log('🔄 Refresh Token:', tokens.refresh_token ? '받음' : '없음');
+    console.log('⏰ 만료 시간:', tokens.expiry_date);
+    
     if (!tokens.access_token) {
+      console.error('❌ Access token을 받지 못했습니다.');
       return NextResponse.json(
         { message: 'Access token을 받지 못했습니다.' },
         { status: 400 }
@@ -98,7 +136,9 @@ export async function POST(request: NextRequest) {
       saved_at: new Date().toISOString()
     };
     
+    console.log('💾 토큰 저장 시작...');
     writeGoogleTokens(tokenData);
+    console.log('✅ 토큰 저장 완료');
 
     return NextResponse.json({ 
       success: true,

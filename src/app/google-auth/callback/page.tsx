@@ -58,28 +58,42 @@ const GoogleAuthCallbackPage = () => {
         } else if (code) {
           // Google OAuth 코드 처리 (기존 YouTube 연동)
           console.log('📺 YouTube OAuth 코드 처리 시작');
+          console.log('📋 받은 코드:', code);
+          console.log('🔍 State:', state);
           setStatus('YouTube 인증 코드 교환 중...');
           
-          const response = await fetch(`/api/google-auth`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ code, state })
-          });
-          
-          if (!response.ok) {
-            throw new Error('YouTube 인증 코드 교환 중 오류가 발생했습니다.');
-          }
+          try {
+            const response = await fetch(`/api/google-auth`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ code, state })
+            });
+            
+            console.log('📡 API 응답 상태:', response.status);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              console.error('❌ API 오류 응답:', errorData);
+              throw new Error(`YouTube 인증 코드 교환 중 오류가 발생했습니다. (${response.status})`);
+            }
 
-          setStatus('YouTube 인증 성공! 리디렉션 중...');
-          if(window.electron) {
-            setStatus('YouTube 인증이 완료되었습니다. 이 창을 닫고 메인 창으로 돌아가주세요.');
-            setTimeout(() => {
-              window.close();
-            }, 3000);
-          } else {
-            router.push('/');
+            const result = await response.json();
+            console.log('✅ 인증 성공 결과:', result);
+
+            setStatus('YouTube 인증 성공! 리디렉션 중...');
+            if(window.electron) {
+              setStatus('YouTube 인증이 완료되었습니다. 이 창을 닫고 메인 창으로 돌아가주세요.');
+              setTimeout(() => {
+                window.close();
+              }, 3000);
+            } else {
+              router.push('/');
+            }
+          } catch (apiError) {
+            console.error('❌ API 호출 중 오류:', apiError);
+            throw apiError;
           }
         } else {
           throw new Error('인증 정보가 없습니다. (토큰 또는 코드 없음)');

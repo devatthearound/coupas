@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: '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'
-}); // 수정된 부분
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 export async function POST(req: NextRequest) {
   const { prompt } = await req.json();

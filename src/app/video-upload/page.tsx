@@ -42,7 +42,18 @@ function VideoUploadContent() {
 
     if (productsParam) {
       try {
-        decodedProducts = JSON.parse(decodeURIComponent(productsParam));
+        // URL 파라미터를 안전하게 디코딩
+        const safeDecode = (str: string) => {
+          try {
+            return decodeURIComponent(str);
+          } catch (error) {
+            console.warn('URL 디코딩 실패, 원본 문자열 사용:', str);
+            return str;
+          }
+        };
+        
+        const decodedParam = safeDecode(productsParam);
+        decodedProducts = JSON.parse(decodedParam);
         setSelectedProducts(decodedProducts);
       } catch (error) {
         console.error('상품 파라미터 파싱 실패:', error);
@@ -51,11 +62,21 @@ function VideoUploadContent() {
     }
 
     if (urlVideoTitle) {
-      setVideoTitle(decodeURIComponent(urlVideoTitle));
+      try {
+        setVideoTitle(decodeURIComponent(urlVideoTitle));
+      } catch (error) {
+        console.warn('비디오 제목 디코딩 실패:', error);
+        setVideoTitle(urlVideoTitle);
+      }
     }
 
     if (urlKeyword) {
-      setSearchKeyword(decodeURIComponent(urlKeyword));
+      try {
+        setSearchKeyword(decodeURIComponent(urlKeyword));
+      } catch (error) {
+        console.warn('키워드 디코딩 실패:', error);
+        setSearchKeyword(urlKeyword);
+      }
     }
 
     if (generatedVideo) {
@@ -86,21 +107,132 @@ function VideoUploadContent() {
     }
   }, [searchParams]);
 
-  // 설명 자동 생성
-  const generateDescription = (products: ProductData[], keyword: string) => {
-    const productList = products.map((product, index) => 
-      `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원`
-    ).join('\n\n');
+  // 설명 자동 생성 (레퍼럴 링크 포함)
+  const generateDescription = async (products: ProductData[], keyword: string) => {
+    try {
+      // 쿠팡 API 키 가져오기
+      const userId = localStorage.getItem('userId') || '7';
+      const apiKeysResponse = await fetch('/api/coupang/keys', {
+        headers: {
+          'x-user-id': userId
+        }
+      });
+      
+      const apiKeysData = await apiKeysResponse.json();
+      
+      if (!apiKeysData.data?.accessKey || !apiKeysData.data?.secretKey) {
+        console.warn('쿠팡 API 키가 설정되지 않았습니다');
+        // API 키가 없어도 기본 설명은 생성
+        const productList = products.map((product, index) => 
+          `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   링크: ${product.productUrl}`
+        ).join('\n\n');
 
-    const description = `${keyword} 관련 상품 추천 영상입니다.
+        const description = `${keyword} 관련 상품 추천 영상입니다.
+
+${productList}
+
+✅ 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+
+#${keyword.replace(/\s+/g, '')} #상품추천 #쇼핑`;
+        setVideoDescription(description);
+        return;
+      }
+
+      // 레퍼럴 링크 생성
+      const coupangUrls = products.map(product => product.productUrl);
+      const deeplinkResponse = await fetch('/api/deeplink', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Coupang-Access-Key': apiKeysData.data.accessKey,
+          'X-Coupang-Secret-Key': apiKeysData.data.secretKey
+        },
+        body: JSON.stringify({ coupangUrls })
+      });
+      
+      console.log('딥링크 API 응답 상태:', deeplinkResponse.status);
+
+      let productList = '';
+      
+      if (deeplinkResponse.ok) {
+        const deeplinkData = await deeplinkResponse.json();
+        console.log('딥링크 API 응답 데이터:', deeplinkData);
+        
+        // 레퍼럴 링크가 있는 경우
+        if (deeplinkData.data && Array.isArray(deeplinkData.data)) {
+          productList = products.map((product, index) => {
+            const deeplink = deeplinkData.data[index];
+            console.log(`상품 ${index + 1} 딥링크:`, deeplink);
+            
+            // 단축 URL이 있으면 사용 (쿠팡 API는 shortenUrl 반환)
+            let referralUrl = '';
+            
+            if (deeplink?.shortenUrl) {
+              // 단축 URL이 있으면 사용
+              referralUrl = deeplink.shortenUrl;
+              console.log(`단축 URL 사용:`, referralUrl);
+            } else {
+              // 단축 URL이 없으면 원본 URL 사용 (하지만 suffix 제거)
+              referralUrl = product.productUrl;
+              console.log(`원본 URL 사용:`, referralUrl);
+            }
+            
+            // |MIXED, |CGV, |CMIXED 등의 suffix 제거 (파이프 문자 이후 모든 것 제거)
+            if (referralUrl && referralUrl.includes('|')) {
+              const cleanUrl = referralUrl.split('|')[0];
+              console.log(`Suffix 제거: ${referralUrl} -> ${cleanUrl}`);
+              referralUrl = cleanUrl;
+            }
+            
+            // URL이 유효한지 확인
+            if (referralUrl && referralUrl.startsWith('http')) {
+              return `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   🔗 구매링크: ${referralUrl}`;
+            } else {
+              // URL이 유효하지 않으면 원본 URL 사용 (하지만 suffix 제거)
+              const cleanOriginalUrl = product.productUrl.split('|')[0];
+              return `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   링크: ${cleanOriginalUrl}`;
+            }
+          }).join('\n\n');
+        } else {
+          // 레퍼럴 링크 생성 실패 시 원본 URL 사용
+          productList = products.map((product, index) => 
+            `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   링크: ${product.productUrl}`
+          ).join('\n\n');
+        }
+      } else {
+        // API 호출 실패 시 원본 URL 사용
+        productList = products.map((product, index) => 
+          `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   링크: ${product.productUrl}`
+        ).join('\n\n');
+      }
+
+      const description = `${keyword} 관련 상품 추천 영상입니다.
+
+${productList}
+
+✅ 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+
+#${keyword.replace(/\s+/g, '')} #상품추천 #쇼핑 #쿠팡`;
+
+      setVideoDescription(description);
+      toast.success('레퍼럴 링크가 포함된 설명이 생성되었습니다!');
+      
+    } catch (error) {
+      console.error('설명 생성 중 오류:', error);
+      // 오류 발생 시에도 기본 설명은 생성
+      const productList = products.map((product, index) => 
+        `${index + 1}. ${product.productName}\n   가격: ${product.productPrice.toLocaleString()}원\n   링크: ${product.productUrl}`
+      ).join('\n\n');
+
+      const description = `${keyword} 관련 상품 추천 영상입니다.
 
 ${productList}
 
 구매 링크는 영상 설명란을 확인해주세요!
 
 #${keyword.replace(/\s+/g, '')} #상품추천 #쇼핑`;
-
-    setVideoDescription(description);
+      setVideoDescription(description);
+    }
   };
 
   // 태그 자동 생성
@@ -226,8 +358,16 @@ ${productList}
           toast.success('유튜브 업로드가 완료되었습니다!');
         }
         
+        // 업로드 완료 후 완료 페이지로 이동
+        const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
+        let url = `/video-complete?videoTitle=${encodeURIComponent(videoTitle)}&videoPath=${encodeURIComponent(generatedVideoUrl)}&keyword=${encodeURIComponent(searchKeyword)}`;
+        
+        if (selectedProducts.length > 0) {
+          url += `&products=${productsParam}`;
+        }
+        
         setTimeout(() => {
-          router.push('/products');
+          router.push(url);
         }, 2000);
       } else {
         console.error('❌ 업로드 실패:', uploadResult.error);
@@ -368,7 +508,21 @@ ${productList}
             </div>
             
             <div>
-              <label className="block text-sm text-gray-300 mb-1">영상 설명</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-sm text-gray-300">영상 설명</label>
+                <button
+                  onClick={() => {
+                    if (selectedProducts.length > 0 && searchKeyword) {
+                      generateDescription(selectedProducts, searchKeyword);
+                    } else {
+                      toast.error('상품과 키워드가 필요합니다.');
+                    }
+                  }}
+                  className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-500"
+                >
+                  🔄 레퍼럴 링크 재생성
+                </button>
+              </div>
               <textarea
                 value={videoDescription}
                 onChange={(e) => setVideoDescription(e.target.value)}

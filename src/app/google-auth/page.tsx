@@ -32,19 +32,36 @@ const GoogleAuthPage = () => {
       try {
         // 기존 토큰 확인
         const hasValidToken = await checkExistingToken();
-        if (hasValidToken) return;
+        if (hasValidToken) {
+          setStatus('이미 인증된 계정이 있습니다. 3초 후 메인 페이지로 이동합니다.');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+          return;
+        }
 
         setStatus('인증 URL 요청 중...');
         const response = await fetch(`/api/google-auth`);
         
         if (!response.ok) {
-          throw new Error('인증 URL을 가져오는데 실패했습니다');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ 인증 URL 요청 실패:', errorData);
+          throw new Error(`인증 URL을 가져오는데 실패했습니다 (${response.status})`);
         }
         
         const { authUrl } = await response.json();
+        console.log('🔗 인증 URL 생성됨:', authUrl);
         setStatus('구글 인증 페이지로 리디렉션 중...');
         
-        window.open(authUrl, '_blank');
+        // 새 창에서 인증 페이지 열기
+        const authWindow = window.open(authUrl, '_blank', 'width=500,height=600');
+        
+        if (!authWindow) {
+          setStatus('팝업이 차단되었습니다. 브라우저 설정을 확인해주세요.');
+          return;
+        }
+        
+        setStatus('구글 인증 페이지가 열렸습니다. 인증을 완료해주세요.');
       } catch (error) {
         console.error('인증 오류:', error);
         setStatus('인증 프로세스 초기화 중 오류가 발생했습니다.');

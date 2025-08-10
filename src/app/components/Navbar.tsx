@@ -284,6 +284,16 @@ export default function Navbar({
                 제휴영상 만들기
               </Link>
               <Link
+                href="/youtube"
+                className={`text-sm transition-colors ${
+                  isActive('/youtube') 
+                    ? 'text-[#514FE4] dark:text-[#6C63FF] font-medium' 
+                    : 'text-gray-600 dark:text-gray-400 hover:text-[#514FE4] dark:hover:text-[#6C63FF]'
+                }`}
+              >
+                YouTube 관리
+              </Link>
+              <Link
                 href="/review-analyzer"
                 className={`text-sm transition-colors flex items-center gap-2 ${
                   isActive('/review-analyzer') 
@@ -441,6 +451,17 @@ export default function Navbar({
             onClick={() => setIsMobileMenuOpen(false)}
           >
             제휴영상 만들기
+          </Link>
+          <Link
+            href="/youtube"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive('/youtube') 
+                ? 'text-blue-700 bg-blue-50' 
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            YouTube 관리
           </Link>
           <Link
             href="/review-analyzer"

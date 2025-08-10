@@ -247,6 +247,13 @@ function checkForUpdatesManually() {
 const createWindow = async () => {
   console.log("createWindow 호출됨 - 스택:", new Error().stack?.split('\n').slice(1, 4).join('\n'));
   
+  // 이미 윈도우가 존재하고 파괴되지 않았다면 기존 윈도우 반환
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log("이미 메인 윈도우가 존재합니다. 기존 윈도우를 포커스합니다.");
+    mainWindow.focus();
+    return mainWindow;
+  }
+  
   if (isCreatingWindow) {
     console.log("윈도우 생성이 이미 진행 중입니다.");
     return mainWindow;
@@ -561,19 +568,19 @@ app.whenReady().then(async () => {
   });
   
 
-  createWindow().then(() => {
-    console.log("윈도우 생성이 완료되었습니다.");
-    // 자동 업데이트 설정
-    setupAutoUpdater();
-  }).catch((error) => {
-    console.error("윈도우 생성 중 오류:", error);
-  });
-
+  // 자동 업데이트 설정
+  setupAutoUpdater();
 
   app.on("activate", () => {
     console.log('App activated');
-    if (BrowserWindow.getAllWindows().length === 0 && !isCreatingWindow) {
+    // macOS에서 Dock 아이콘 클릭 시 윈도우가 없으면 새로 생성
+    if (BrowserWindow.getAllWindows().length === 0) {
+      console.log('활성화된 윈도우가 없습니다. 새 윈도우를 생성합니다.');
       createWindow();
+    } else {
+      // 윈도우가 있으면 포커스
+      console.log('기존 윈도우를 포커스합니다.');
+      mainWindow?.focus();
     }
   });
 });
@@ -783,29 +790,35 @@ ipcMain.handle('read-file-as-data-url', async (_, filePath) => {
   }
 });
 
-// 싱글 인스턴스 보장 (개발 모드에서는 비활성화)
-if (!isDev) {
-  console.log("싱글 인스턴스 잠금을 요청합니다...");
-  const gotTheLock = app.requestSingleInstanceLock();
+// 싱글 인스턴스 보장 (개발 모드에서도 활성화)
+console.log("싱글 인스턴스 잠금을 요청합니다...");
+const gotTheLock = app.requestSingleInstanceLock();
 
-  if (!gotTheLock) {
-    console.log("앱이 이미 실행 중입니다. 종료합니다.");
-    app.quit();
-  } else {
-    console.log("싱글 인스턴스 잠금을 획득했습니다.");
-  }
+if (!gotTheLock) {
+  console.log("앱이 이미 실행 중입니다. 기존 인스턴스를 포커스합니다.");
+  // 기존 인스턴스에 포커스 요청
+  app.quit();
 } else {
-  console.log("개발 모드: 싱글 인스턴스 잠금을 비활성화합니다.");
+  console.log("싱글 인스턴스 잠금을 획득했습니다.");
 }
 
 app.on('second-instance', (event, commandLine) => {
+  console.log('두 번째 인스턴스가 실행되었습니다. 기존 인스턴스를 포커스합니다.');
+  
   if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
+    // 윈도우가 최소화되어 있으면 복원
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    
+    // 윈도우를 앞으로 가져오고 포커스
+    mainWindow.show();
     mainWindow.focus();
     
     // URL 프로토콜로 실행된 경우 처리
     const protocolUrl = commandLine.find(arg => arg.startsWith('coupas-auth://'));
     if (protocolUrl) {
+      console.log('프로토콜 URL 처리:', protocolUrl);
       try {
         const url = new URL(protocolUrl);
         
@@ -831,6 +844,9 @@ app.on('second-instance', (event, commandLine) => {
         console.error('URL 파싱 중 오류:', error);
       }
     }
+  } else {
+    console.log('메인 윈도우가 없습니다. 새로 생성합니다.');
+    createWindow();
   }
 });
 
