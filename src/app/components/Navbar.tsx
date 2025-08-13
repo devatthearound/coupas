@@ -284,16 +284,6 @@ export default function Navbar({
                 제휴영상 만들기
               </Link>
               <Link
-                href="/youtube"
-                className={`text-sm transition-colors ${
-                  isActive('/youtube') 
-                    ? 'text-[#514FE4] dark:text-[#6C63FF] font-medium' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-[#514FE4] dark:hover:text-[#6C63FF]'
-                }`}
-              >
-                YouTube 관리
-              </Link>
-              <Link
                 href="/review-analyzer"
                 className={`text-sm transition-colors flex items-center gap-2 ${
                   isActive('/review-analyzer') 

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { ProductData } from '@/services/coupang/types';
+import { VideoPreviewModal } from '@/app/components/VideoPreviewModal';
 import { 
   CheckCircleIcon, 
   PlayIcon, 
@@ -24,6 +25,47 @@ export default function VideoCompletePage() {
     products: ProductData[];
     outputDirectory: string;
   } | null>(null);
+
+  // 모달 상태 추가
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadComments, setUploadComments] = useState('');
+  const [commentTemplate, setCommentTemplate] = useState<'template1' | 'template2'>('template1');
+
+  // 댓글 자동 생성 함수
+  const generateComment = useCallback((products: ProductData[], template: 'template1' | 'template2'): string => {
+    if (products.length === 0) return '';
+
+    try {
+      const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
+      
+      const templates = {
+        template1: (product: ProductData, index: number) => 
+          `🏆 ${index + 1}위 ${product.productName}\n` +
+          `✨ 최저가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
+          `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
+          `\n구매링크: ${product.shortUrl || product.productUrl}\n`,
+
+        template2: (product: ProductData, index: number) =>
+          `💫 ${index + 1}위 추천! ${product.productName}\n` +
+          `💰 특가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송으로 빠른배송\n' : ''}` +
+          `${product.isFreeShipping ? '무료배송 가능\n' : ''}` +
+          `\n상세정보 👉 ${product.shortUrl || product.productUrl}\n`
+      };
+
+      const productsText = products.map((product: ProductData, index: number) => 
+        templates[template](product, index)
+      ).join('\n');
+
+      const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
+
+      return header + productsText + footer;
+    } catch (error) {
+      console.error('댓글 생성 오류:', error);
+      return '';
+    }
+  }, []);
 
   useEffect(() => {
     const videoTitle = searchParams?.get('videoTitle');
@@ -49,8 +91,22 @@ export default function VideoCompletePage() {
         products,
         outputDirectory: outputDirectory ? decodeURIComponent(outputDirectory) : ''
       });
+
+      // 댓글 자동 생성
+      if (products.length > 0) {
+        const generatedComment = generateComment(products, commentTemplate);
+        setUploadComments(generatedComment);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, generateComment, commentTemplate]);
+
+  // 템플릿 변경 시 댓글 재생성
+  useEffect(() => {
+    if (videoInfo?.products && videoInfo.products.length > 0) {
+      const generatedComment = generateComment(videoInfo.products, commentTemplate);
+      setUploadComments(generatedComment);
+    }
+  }, [commentTemplate, videoInfo?.products, generateComment]);
 
   const handleOpenFolder = async () => {
     if (videoInfo?.outputDirectory && window.electron) {
@@ -78,8 +134,21 @@ export default function VideoCompletePage() {
     router.push('/');
   };
 
-  const handleGoToYoutube = () => {
-    router.push('/video-upload');
+  // 영상업로드 모달 열기
+  const handleOpenUploadModal = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  // 영상업로드 처리
+  const handleYoutubeUpload = async (uploadData: {
+    title: string;
+    description: string;
+    tags: string[];
+    thumbnailPath: string;
+  }) => {
+    // 업로드 완료 처리는 VideoPreviewModal 내부에서 처리됨
+    // 여기서는 추가적인 처리가 필요할 때만 사용
+    console.log('업로드 완료:', uploadData);
   };
 
   if (!videoInfo) {
@@ -186,7 +255,7 @@ export default function VideoCompletePage() {
 
           {/* 유튜브 업로드 */}
           <button
-            onClick={handleGoToYoutube}
+            onClick={handleOpenUploadModal}
             className="bg-red-600 hover:bg-red-700 text-white p-6 rounded-xl 
               transition-all duration-200 hover:shadow-lg group"
           >
@@ -267,6 +336,22 @@ export default function VideoCompletePage() {
           </ul>
         </div>
       </div>
+
+             {/* 유튜브 업로드 모달 */}
+       {videoInfo && (
+         <VideoPreviewModal
+           videoTitle={videoInfo.title}
+           isOpen={isUploadModalOpen}
+           onClose={() => setIsUploadModalOpen(false)}
+           videoUrl={videoInfo.path}
+           onYoutubeUpload={handleYoutubeUpload}
+           comments={uploadComments}
+           commentTemplate={commentTemplate}
+           onCommentTemplateChange={setCommentTemplate}
+           onCommentsChange={setUploadComments}
+           keyword={videoInfo.keyword}
+         />
+       )}
     </div>
   );
 }

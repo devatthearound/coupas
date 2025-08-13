@@ -63,6 +63,42 @@ function VideoCreationContent() {
 
   const [customComments, setCustomComments] = useState<string>('');
 
+  // 댓글 자동 생성 함수
+  const generateComment = useCallback((products: ExtendedProductData[], template: 'template1' | 'template2'): string => {
+    if (products.length === 0) return '';
+
+    try {
+      const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
+      
+      const templates = {
+        template1: (product: ExtendedProductData, index: number) => 
+          `🏆 ${index + 1}위 ${product.productName}\n` +
+          `✨ 최저가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
+          `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
+          `\n구매링크: ${product.shortUrl || product.productUrl}\n`,
+
+        template2: (product: ExtendedProductData, index: number) =>
+          `💫 ${index + 1}위 추천! ${product.productName}\n` +
+          `💰 특가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송으로 빠른배송\n' : ''}` +
+          `${product.isFreeShipping ? '무료배송 가능\n' : ''}` +
+          `\n상세정보 👉 ${product.shortUrl || product.productUrl}\n`
+      };
+
+      const productsText = products.map((product: ExtendedProductData, index: number) => 
+        templates[template](product, index)
+      ).join('\n');
+
+      const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
+
+      return header + productsText + footer;
+    } catch (error) {
+      console.error('댓글 생성 오류:', error);
+      return '';
+    }
+  }, []);
+
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [pendingUploadData, setPendingUploadData] = useState<{
     title: string;
@@ -454,16 +490,8 @@ function VideoCreationContent() {
         }
         toast.success('비디오 합성이 완료되었습니다!');
         
-        // 완료 페이지로 이동
-        const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
-        let url = `/video-complete?videoTitle=${encodeURIComponent(videoTitle)}&videoPath=${encodeURIComponent(result.outputPath)}&outputDirectory=${encodeURIComponent(outputDirectory)}`;
-        
-        if (selectedProducts.length > 0) {
-          url += `&products=${productsParam}`;
-        }
-        
-        console.log('완료 페이지로 이동:', url);
-        router.push(url);
+        // VideoPreviewModal 바로 열기
+        setIsPreviewModalOpen(true);
       } else {
         setProgress('');
         toast.error(`합성 실패: ${result.error}`);
@@ -537,11 +565,25 @@ function VideoCreationContent() {
           index === self.findIndex((p: any) => p.productId === product.productId)
         );
         setSelectedProducts(uniqueProducts);
+        
+        // 댓글 자동 생성
+        if (uniqueProducts.length > 0) {
+          const generatedComment = generateComment(uniqueProducts, commentTemplate);
+          setCustomComments(generatedComment);
+        }
       } catch (error) {
         toast.error('상품 정보를 불러오는데 실패했습니다.');
       }
     }
-  }, []);
+  }, [generateComment, commentTemplate]);
+
+  // 템플릿 변경 시 댓글 재생성
+  useEffect(() => {
+    if (selectedProducts.length > 0) {
+      const generatedComment = generateComment(selectedProducts, commentTemplate);
+      setCustomComments(generatedComment);
+    }
+  }, [commentTemplate, selectedProducts, generateComment]);
 
   // 키워드 가져오기 (URL 파라미터 또는 세션 스토리지에서)
   useEffect(() => {
@@ -1104,6 +1146,22 @@ function VideoCreationContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* VideoPreviewModal */}
+      {generatedVideoUrl && (
+        <VideoPreviewModal
+          videoTitle={videoTitle}
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          videoUrl={generatedVideoUrl}
+          onYoutubeUpload={uploadToYoutube}
+          comments={customComments}
+          commentTemplate={commentTemplate}
+          onCommentTemplateChange={setCommentTemplate}
+          onCommentsChange={setCustomComments}
+          keyword={selectedProducts[0]?.keyword || ''}
+        />
       )}
     </div>
   );

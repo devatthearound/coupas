@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { ProductData } from '@/services/coupang/types';
@@ -10,6 +10,7 @@ import { LockClosedIcon, ArrowDownTrayIcon, ArrowTopRightOnSquareIcon } from '@h
 import JSZip from 'jszip';
 import { searchProducts } from '@/services/coupang/searchProducts';
 import { getCoupangApiKeys } from '@/services/coupang/keys';
+import { VideoPreviewModal } from '../components/VideoPreviewModal';
 
 export default function ProductsPage() {
   return (
@@ -36,6 +37,10 @@ function ProductsContent() {
     videoTitle: string;
     outputDirectory: string;
   } | null>(null);
+
+  // VideoPreviewModal 관련 상태
+  const [customComments, setCustomComments] = useState<string>('');
+  const [commentTemplateForModal, setCommentTemplateForModal] = useState<'template1' | 'template2'>('template1');
 
   // 템플릿 상태 관리
   const [templateStatus, setTemplateStatus] = useState<{
@@ -83,6 +88,21 @@ function ProductsContent() {
           index === self.findIndex((p: any) => p.productId === product.productId)
         );
         setSelectedProducts(uniqueProducts);
+        
+        // 댓글 자동 생성 (함수 정의 후에 처리)
+        if (uniqueProducts.length > 0) {
+          // 간단한 댓글 생성 로직을 인라인으로 처리
+          const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
+          const productsText = uniqueProducts.map((product: ProductData, index: number) => 
+            `🏆 ${index + 1}위 ${product.productName}\n` +
+            `✨ 최저가: ${product.productPrice.toLocaleString()}원\n` +
+            `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
+            `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
+            `\n구매링크: ${product.shortUrl || product.productUrl}\n`
+          ).join('\n');
+          const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
+          setCustomComments(header + productsText + footer);
+        }
       } catch (error) {
         console.error('Failed to parse products:', error);
         toast.error('상품 정보를 불러올 수 없습니다');
@@ -94,7 +114,59 @@ function ProductsContent() {
     if (savedKeyword) {
       setSearchKeyword(savedKeyword);
     }
-  }, [searchParams]);
+  }, [searchParams, commentTemplateForModal]);
+
+  // 템플릿 변경 시 댓글 재생성
+  useEffect(() => {
+    if (selectedProducts.length > 0) {
+      const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
+      const productsText = selectedProducts.map((product: ProductData, index: number) => 
+        `🏆 ${index + 1}위 ${product.productName}\n` +
+        `✨ 최저가: ${product.productPrice.toLocaleString()}원\n` +
+        `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
+        `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
+        `\n구매링크: ${product.shortUrl || product.productUrl}\n`
+      ).join('\n');
+      const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
+      setCustomComments(header + productsText + footer);
+    }
+  }, [commentTemplateForModal, selectedProducts]);
+
+  // 댓글 자동 생성 함수 (모달용)
+  const generateModalComment = useCallback((products: ProductData[], template: 'template1' | 'template2'): string => {
+    if (products.length === 0) return '';
+
+    try {
+      const header = "이 포스팅은 쿠팡파트너스 활동의 일환으로, 일정액의 수수료를 제공받습니다.\n\n";
+      
+      const templates = {
+        template1: (product: ProductData, index: number) => 
+          `🏆 ${index + 1}위 ${product.productName}\n` +
+          `✨ 최저가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송\n' : ''}` +
+          `${product.isFreeShipping ? '🆓 무료배송\n' : ''}` +
+          `\n구매링크: ${product.shortUrl || product.productUrl}\n`,
+
+        template2: (product: ProductData, index: number) =>
+          `💫 ${index + 1}위 추천! ${product.productName}\n` +
+          `💰 특가: ${product.productPrice.toLocaleString()}원\n` +
+          `${product.isRocket ? '🚀 로켓배송으로 빠른배송\n' : ''}` +
+          `${product.isFreeShipping ? '무료배송 가능\n' : ''}` +
+          `\n상세정보 👉 ${product.shortUrl || product.productUrl}\n`
+      };
+
+      const productsText = products.map((product: ProductData, index: number) => 
+        templates[template](product, index)
+      ).join('\n');
+
+      const footer = '\n#쿠팡 #최저가 #추천상품 #쇼핑';
+
+      return header + productsText + footer;
+    } catch (error) {
+      console.error('댓글 생성 오류:', error);
+      return '';
+    }
+  }, []);
 
   // 템플릿 상태 체크 함수
   const checkTemplateStatus = async () => {
@@ -543,24 +615,15 @@ function ProductsContent() {
         outputDirectory: template.outputDirectory
       });
 
-      toast.success('영상 생성이 완료되었습니다! 완료 페이지로 이동합니다...');
+      toast.success('영상 생성이 완료되었습니다! 업로드 모달을 열어드립니다...');
 
-      // 2초 후 자동으로 완료 페이지로 이동
-      setTimeout(() => {
-        const productsParam = encodeURIComponent(JSON.stringify(selectedProducts));
-        let url = `/video-complete?videoTitle=${encodeURIComponent(videoTitle)}&videoPath=${encodeURIComponent(videoResult.outputPath)}&outputDirectory=${encodeURIComponent(template.outputDirectory)}`;
-        
-        if (searchKeyword) {
-          url += `&keyword=${encodeURIComponent(searchKeyword)}`;
-        }
-        
-        if (selectedProducts.length > 0) {
-          url += `&products=${productsParam}`;
-        }
-        
-        console.log('완료 페이지로 이동:', url);
-        router.push(url);
-      }, 2000);
+      // VideoPreviewModal 바로 열기
+      setGeneratedVideoInfo({
+        outputPath: videoResult.outputPath,
+        videoTitle: videoTitle,
+        outputDirectory: template.outputDirectory
+      });
+      setIsPreviewModalOpen(true);
 
     } catch (error) {
       console.error('영상 생성 오류:', error);
@@ -1063,6 +1126,26 @@ function ProductsContent() {
           </div>
         </div>
       </div>
+
+      {/* VideoPreviewModal */}
+      {generatedVideoInfo && (
+        <VideoPreviewModal
+          videoTitle={generatedVideoInfo.videoTitle}
+          isOpen={isPreviewModalOpen}
+          onClose={() => setIsPreviewModalOpen(false)}
+          videoUrl={generatedVideoInfo.outputPath}
+          onYoutubeUpload={async (uploadData) => {
+            console.log('업로드 완료:', uploadData);
+            setIsPreviewModalOpen(false);
+            toast.success('영상이 성공적으로 업로드되었습니다!');
+          }}
+          comments={customComments}
+          commentTemplate={commentTemplateForModal}
+          onCommentTemplateChange={setCommentTemplateForModal}
+          onCommentsChange={setCustomComments}
+          keyword={searchKeyword}
+        />
+      )}
     </div>
   );
 } 
